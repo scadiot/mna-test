@@ -303,3 +303,78 @@ class Ammeter(Component):
         branch = branch_map[self.id]
         current = x[branch]   # courant mesuré = inconnue de branche
         return {"voltage": 0.0, "current": current}
+
+
+# ── Source de tension ─────────────────────────────────────────────────────────
+
+class VoltageSource(Component):
+    """
+    Source de tension (DC, sinus, impulsion ou créneau).
+    Impose V_pos - V_neg = source.voltage(t) via une branche MNA.
+    """
+
+    def __init__(self, component_id, node_pos, node_neg, source):
+        super().__init__(component_id, {"waveform": type(source).__name__})
+        self.node_pos = node_pos
+        self.node_neg = node_neg
+        self.source = source   # instance de DCSource, SineSource, etc.
+
+    def get_nodes(self):
+        return [self.node_pos, self.node_neg]
+
+    def needs_branch(self):
+        return True
+
+    def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_pos = node_map.get(self.node_pos, -1)
+        idx_neg = node_map.get(self.node_neg, -1)
+        branch = branch_map[self.id]
+        voltage = self.source.voltage(t)
+        # Ligne de branche : impose V_pos - V_neg = voltage
+        if idx_pos >= 0:
+            G[branch, idx_pos] += 1.0
+            G[idx_pos, branch] += 1.0
+        if idx_neg >= 0:
+            G[branch, idx_neg] -= 1.0
+            G[idx_neg, branch] -= 1.0
+        b[branch] = voltage
+
+    def get_state(self, x, node_map, branch_map):
+        va = _node_voltage(x, node_map, self.node_pos)
+        vb = _node_voltage(x, node_map, self.node_neg)
+        branch = branch_map[self.id]
+        current = -x[branch]   # courant fourni par la source (convention générateur)
+        return {"voltage": va - vb, "current": current}
+
+
+# ── Source de courant ─────────────────────────────────────────────────────────
+
+class CurrentSource(Component):
+    """
+    Source de courant (DC, sinus, impulsion ou créneau).
+    Injecte source.voltage(t) ampères du nœud node_b vers node_a.
+    """
+
+    def __init__(self, component_id, node_a, node_b, source):
+        super().__init__(component_id, {"waveform": type(source).__name__})
+        self.node_a = node_a
+        self.node_b = node_b
+        self.source = source
+
+    def get_nodes(self):
+        return [self.node_a, self.node_b]
+
+    def needs_branch(self):
+        return False
+
+    def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_a = node_map.get(self.node_a, -1)
+        idx_b = node_map.get(self.node_b, -1)
+        current = self.source.voltage(t)   # voltage() retourne l'amplitude du courant
+        # Injecte 'current' ampères entrant en idx_a, sortant de idx_b
+        _stamp_current(b, idx_a, idx_b, current)
+
+    def get_state(self, x, node_map, branch_map):
+        va = _node_voltage(x, node_map, self.node_a)
+        vb = _node_voltage(x, node_map, self.node_b)
+        return {"voltage": va - vb, "current": 0.0}

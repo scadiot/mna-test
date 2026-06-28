@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
 from simulator.components import Resistor, Capacitor, Inductor, Switch, Voltmeter, Ammeter
+from simulator.components import VoltageSource, CurrentSource
+from simulator.sources import DCSource
 
 def test_resistor_stamp_between_two_nodes():
     """Résistance 1kΩ entre N1 (idx=0) et N2 (idx=1) : conductance 0.001 S."""
@@ -153,3 +155,36 @@ def test_ammeter_stamp():
     assert G[0, 2] == pytest.approx(1.0)
     assert G[1, 2] == pytest.approx(-1.0)
     assert b[2] == pytest.approx(0.0)   # tension imposée = 0 V
+
+
+# ── Tests VoltageSource et CurrentSource (Task 7) ────────────────────────────
+
+def test_voltage_source_stamp():
+    """Source 5V DC entre N1 et GND : impose V[N1]=5V via la ligne de branche."""
+    G = np.zeros((2, 2))   # 1 nœud N1 + 1 branche V1
+    b = np.zeros(2)
+    src = VoltageSource("V1", "N1", "GND", DCSource(5.0))
+    src.stamp(G, b, {"N1": 0}, {"V1": 1}, dt=1e-5, t=0.0, prev_state={})
+    # Ligne de branche [1] : G[1,0]=1
+    assert G[1, 0] == pytest.approx(1.0)
+    # Colonne KCL : G[0,1]=1
+    assert G[0, 1] == pytest.approx(1.0)
+    # Valeur imposée
+    assert b[1] == pytest.approx(5.0)
+
+def test_voltage_source_needs_branch():
+    src = VoltageSource("V1", "N1", "GND", DCSource(5.0))
+    assert src.needs_branch() is True
+
+def test_current_source_stamp():
+    """Source 2mA de N2 vers N1 : inject dans b."""
+    G = np.zeros((2, 2))
+    b = np.zeros(2)
+    isrc = CurrentSource("I1", "N1", "N2", DCSource(0.002))
+    isrc.stamp(G, b, {"N1": 0, "N2": 1}, {}, dt=1e-5, t=0.0, prev_state={})
+    assert b[0] == pytest.approx(0.002)    # courant entrant en N1
+    assert b[1] == pytest.approx(-0.002)   # courant sortant de N2
+
+def test_current_source_no_branch():
+    isrc = CurrentSource("I1", "N1", "GND", DCSource(1.0))
+    assert isrc.needs_branch() is False
