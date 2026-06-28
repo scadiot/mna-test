@@ -1,0 +1,41 @@
+{
+  "name": "Circuit DC simple (source + interrupteur + résistance)",
+  "dt": 1e-4,
+  "components": [
+    {
+      "id": "V1",
+      "type": "voltage_source",
+      "node_pos": "N1",
+      "node_neg": "GND",
+      "params": { "waveform": "dc", "amplitude": 9.0 }
+    },
+    {
+      "id": "SW1",
+      "type": "switch",
+      "node_a": "N1",
+      "node_b": "N2",
+      "params": { "closed": false }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "node_a": "N2",
+      "node_b": "GND",
+      "params": { "resistance": 1000.0 }
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "node_a": "N2",
+      "node_b": "GND",
+      "params": { "resistance": 1000.0 }
+    },
+    {
+      "id": "VM1",
+      "type": "voltmeter",
+      "node_a": "N2",
+      "node_b": "GND",
+      "params": { "history_size": 200 }
+    }
+  ]
+}

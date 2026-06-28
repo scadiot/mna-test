@@ -440,6 +440,42 @@ class BJT(Component):
         return {"voltage": vce, "current": i_b, "vbe": vbe, "vce": vce}
 
 
+# ── Diode ─────────────────────────────────────────────────────────────────────
+
+class Diode(Component):
+    """
+    Diode — modèle linéaire par morceaux basé sur prev_state :
+      V_AK > vf → passante (R_on très faible)
+      V_AK ≤ vf → bloquée (R_off très grande)
+    """
+
+    R_ON  = 0.1    # Ω
+    R_OFF = 1e9    # Ω
+
+    def __init__(self, component_id, node_anode, node_cathode, vf=0.6):
+        super().__init__(component_id, {"vf": vf})
+        self.node_anode   = node_anode
+        self.node_cathode = node_cathode
+        self.vf = vf
+
+    def get_nodes(self):
+        return [self.node_anode, self.node_cathode]
+
+    def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_a = node_map.get(self.node_anode,   -1)
+        idx_k = node_map.get(self.node_cathode, -1)
+        v_prev = prev_state.get("voltage", 0.0)
+        r = self.R_ON if v_prev > self.vf else self.R_OFF
+        _stamp_conductance(G, idx_a, idx_k, 1.0 / r)
+
+    def get_state(self, x, node_map, branch_map):
+        va = _node_voltage(x, node_map, self.node_anode)
+        vk = _node_voltage(x, node_map, self.node_cathode)
+        voltage = va - vk
+        r = self.R_ON if voltage > self.vf else self.R_OFF
+        return {"voltage": voltage, "current": voltage / r}
+
+
 # ── Amplificateur opérationnel idéal ──────────────────────────────────────────
 
 class OpAmp(Component):

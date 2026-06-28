@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from simulator.components import (
     Resistor, Capacitor, Inductor, Switch,
     VoltageSource, CurrentSource,
-    BJT, OpAmp, Voltmeter, Ammeter,
+    BJT, OpAmp, Voltmeter, Ammeter, Diode,
 )
 from simulator.sources import DCSource, SineSource, PulseSource, SquareSource
 
@@ -68,6 +68,9 @@ def _make_component(data):
                    vbe_threshold=float(params.get("vbe_threshold", 0.6)))
     elif comp_type == "opamp":
         return OpAmp(comp_id, data["node_plus"], data["node_minus"], data["node_out"])
+    elif comp_type == "diode":
+        return Diode(comp_id, data["node_anode"], data["node_cathode"],
+                     float(params.get("vf", 0.6)))
     elif comp_type == "voltmeter":
         return Voltmeter(comp_id, data["node_a"], data["node_b"],
                          int(params.get("history_size", 500)))

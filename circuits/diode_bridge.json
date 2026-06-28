@@ -1,0 +1,62 @@
+{
+  "name": "Pont de diodes — redresseur pleine onde (12 V / 50 Hz)",
+  "dt": 1e-4,
+  "components": [
+    {
+      "id": "V1",
+      "type": "voltage_source",
+      "node_pos": "N1",
+      "node_neg": "N2",
+      "params": { "waveform": "sine", "amplitude": 12.0, "frequency": 50.0 }
+    },
+    {
+      "id": "D1",
+      "type": "diode",
+      "node_anode": "N1",
+      "node_cathode": "N_out",
+      "params": { "vf": 0.6 }
+    },
+    {
+      "id": "D2",
+      "type": "diode",
+      "node_anode": "N2",
+      "node_cathode": "N_out",
+      "params": { "vf": 0.6 }
+    },
+    {
+      "id": "D3",
+      "type": "diode",
+      "node_anode": "GND",
+      "node_cathode": "N2",
+      "params": { "vf": 0.6 }
+    },
+    {
+      "id": "D4",
+      "type": "diode",
+      "node_anode": "GND",
+      "node_cathode": "N1",
+      "params": { "vf": 0.6 }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "node_a": "N_out",
+      "node_b": "GND",
+      "params": { "resistance": 1000.0 }
+    },
+    {
+      "id": "VM_out",
+      "type": "voltmeter",
+      "node_a": "N_out",
+      "node_b": "GND",
+      "params": { "history_size": 400 }
+    },
+    {
+      "id": "VM_ac",
+      "type": "voltmeter",
+      "node_a": "N1",
+      "node_b": "N2",
+      "params": { "history_size": 400 }
+    }
+  ]
+}
