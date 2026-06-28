@@ -107,3 +107,74 @@ class Resistor(Component):
         vb = _node_voltage(x, node_map, self.node_b)
         voltage = va - vb
         return {"voltage": voltage, "current": voltage / self.resistance}
+
+
+# ── Condensateur ──────────────────────────────────────────────────────────────
+
+class Capacitor(Component):
+    """
+    Condensateur — modèle compagnon Norton (Euler implicite) :
+      i(t) = (C/dt) * v(t) - (C/dt) * v(t-1)
+    Équivalent : conductance G_eq = C/dt + source de courant I_companion = G_eq * v_prev
+    """
+
+    def __init__(self, component_id, node_a, node_b, capacitance):
+        super().__init__(component_id, {"capacitance": capacitance})
+        self.node_a = node_a
+        self.node_b = node_b
+        self.capacitance = capacitance
+
+    def get_nodes(self):
+        return [self.node_a, self.node_b]
+
+    def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_a = node_map.get(self.node_a, -1)
+        idx_b = node_map.get(self.node_b, -1)
+        g_eq = self.capacitance / dt
+        v_prev = prev_state.get("voltage", 0.0)
+        # Conductance compagnon
+        _stamp_conductance(G, idx_a, idx_b, g_eq)
+        # Source de courant compagnon : injecte g_eq*v_prev depuis idx_b vers idx_a
+        _stamp_current(b, idx_a, idx_b, g_eq * v_prev)
+
+    def get_state(self, x, node_map, branch_map):
+        va = _node_voltage(x, node_map, self.node_a)
+        vb = _node_voltage(x, node_map, self.node_b)
+        # Le courant réel est recalculé par le moteur depuis prev_state
+        return {"voltage": va - vb, "current": 0.0}
+
+
+# ── Bobine ────────────────────────────────────────────────────────────────────
+
+class Inductor(Component):
+    """
+    Bobine — modèle compagnon Norton (Euler implicite) :
+      i(t) = (dt/L) * v(t) + i(t-1)
+    Équivalent : conductance G_eq = dt/L + source de courant I_companion = i_prev
+    """
+
+    def __init__(self, component_id, node_a, node_b, inductance):
+        super().__init__(component_id, {"inductance": inductance})
+        self.node_a = node_a
+        self.node_b = node_b
+        self.inductance = inductance
+
+    def get_nodes(self):
+        return [self.node_a, self.node_b]
+
+    def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_a = node_map.get(self.node_a, -1)
+        idx_b = node_map.get(self.node_b, -1)
+        g_eq = dt / self.inductance
+        i_prev = prev_state.get("current", 0.0)
+        # Conductance compagnon
+        _stamp_conductance(G, idx_a, idx_b, g_eq)
+        # Source de courant compagnon : injecte i_prev depuis idx_b vers idx_a
+        _stamp_current(b, idx_a, idx_b, i_prev)
+
+    def get_state(self, x, node_map, branch_map):
+        va = _node_voltage(x, node_map, self.node_a)
+        vb = _node_voltage(x, node_map, self.node_b)
+        voltage = va - vb
+        # Le courant est i(t) = G_eq*v(t) + i_prev, recalculé par le moteur depuis prev_state
+        return {"voltage": voltage, "current": 0.0}
