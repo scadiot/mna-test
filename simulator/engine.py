@@ -2,6 +2,7 @@
 import time
 import threading
 import numpy as np
+from simulator.components import Inductor, Capacitor, Ammeter
 
 
 class SimulationEngine:
@@ -73,11 +74,11 @@ class SimulationEngine:
             state = comp.get_state(x, self._node_map, self._branch_map)
             comp_states[comp.id] = state
             if comp.records_history:
-                history_updates[comp.id] = state["voltage"]
+                # Enregistre la tension pour le voltmètre, le courant pour l'ampèremètre
+                history_updates[comp.id] = state["current"] if isinstance(comp, Ammeter) else state["voltage"]
 
         # Recalcul du courant pour les composants réactifs
         # (get_state ne connaît pas prev_state, donc current=0.0 par défaut)
-        from simulator.components import Inductor, Capacitor
         for comp in self._components:
             if isinstance(comp, Inductor):
                 va = float(x[self._node_map[comp.node_a]]) if comp.node_a in self._node_map else 0.0

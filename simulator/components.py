@@ -314,7 +314,9 @@ class VoltageSource(Component):
     """
 
     def __init__(self, component_id, node_pos, node_neg, source):
-        super().__init__(component_id, {"waveform": type(source).__name__})
+        # Paramètres statiques incluant les valeurs de la source
+        source_params = {k: v for k, v in source.__dict__.items()}
+        super().__init__(component_id, {"waveform": type(source).__name__, **source_params})
         self.node_pos = node_pos
         self.node_neg = node_neg
         self.source = source   # instance de DCSource, SineSource, etc.
@@ -356,7 +358,9 @@ class CurrentSource(Component):
     """
 
     def __init__(self, component_id, node_a, node_b, source):
-        super().__init__(component_id, {"waveform": type(source).__name__})
+        # Paramètres statiques incluant les valeurs de la source
+        source_params = {k: v for k, v in source.__dict__.items()}
+        super().__init__(component_id, {"waveform": type(source).__name__, **source_params})
         self.node_a = node_a
         self.node_b = node_b
         self.source = source

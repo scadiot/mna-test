@@ -123,6 +123,8 @@ def test_switch_toggle():
     assert sw.closed is False
     sw.toggle()
     assert sw.closed is True
+    # Vérifie que params reflète l'état de l'interrupteur
+    assert sw.params["closed"] == sw.closed
 
 def test_voltmeter_is_high_impedance():
     """Voltmètre = résistance 1e9 Ω (invisible pour le circuit)."""
