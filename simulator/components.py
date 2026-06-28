@@ -178,3 +178,128 @@ class Inductor(Component):
         voltage = va - vb
         # Le courant est i(t) = G_eq*v(t) + i_prev, recalculé par le moteur depuis prev_state
         return {"voltage": voltage, "current": 0.0}
+
+
+# ── Interrupteur ──────────────────────────────────────────────────────────────
+
+class Switch(Component):
+    """
+    Interrupteur : résistance très grande (ouvert) ou très faible (fermé).
+    Peut être basculé en temps réel via toggle().
+    """
+
+    R_OPEN = 1e9     # Ω — circuit pratiquement ouvert
+    R_CLOSED = 1e-6  # Ω — quasi court-circuit
+
+    def __init__(self, component_id, node_a, node_b, closed=False):
+        super().__init__(component_id, {"closed": closed})
+        self.node_a = node_a
+        self.node_b = node_b
+        self.closed = closed
+
+    def toggle(self):
+        """Bascule l'état de l'interrupteur."""
+        self.closed = not self.closed
+        self.params["closed"] = self.closed
+
+    def get_nodes(self):
+        return [self.node_a, self.node_b]
+
+    def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_a = node_map.get(self.node_a, -1)
+        idx_b = node_map.get(self.node_b, -1)
+        r = self.R_CLOSED if self.closed else self.R_OPEN
+        _stamp_conductance(G, idx_a, idx_b, 1.0 / r)
+
+    def get_state(self, x, node_map, branch_map):
+        va = _node_voltage(x, node_map, self.node_a)
+        vb = _node_voltage(x, node_map, self.node_b)
+        voltage = va - vb
+        r = self.R_CLOSED if self.closed else self.R_OPEN
+        return {"voltage": voltage, "current": voltage / r}
+
+
+# ── Voltmètre ─────────────────────────────────────────────────────────────────
+
+class Voltmeter(Component):
+    """
+    Voltmètre : résistance très grande (n'influence pas le circuit).
+    Enregistre un historique de la tension mesurée.
+    """
+
+    def __init__(self, component_id, node_a, node_b, history_size=500):
+        super().__init__(component_id, {"history_size": history_size})
+        self.node_a = node_a
+        self.node_b = node_b
+        self._history_size = history_size
+
+    def get_nodes(self):
+        return [self.node_a, self.node_b]
+
+    @property
+    def records_history(self):
+        return True
+
+    @property
+    def history_size(self):
+        return self._history_size
+
+    def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_a = node_map.get(self.node_a, -1)
+        idx_b = node_map.get(self.node_b, -1)
+        # 1e9 Ω → conductance 1e-9 S, pratiquement invisible pour le circuit
+        _stamp_conductance(G, idx_a, idx_b, 1e-9)
+
+    def get_state(self, x, node_map, branch_map):
+        va = _node_voltage(x, node_map, self.node_a)
+        vb = _node_voltage(x, node_map, self.node_b)
+        voltage = va - vb
+        return {"voltage": voltage, "current": voltage * 1e-9}
+
+
+# ── Ampèremètre ───────────────────────────────────────────────────────────────
+
+class Ammeter(Component):
+    """
+    Ampèremètre : source de tension 0 V (court-circuit idéal avec mesure de courant).
+    Nécessite une branche MNA supplémentaire pour mesurer le courant.
+    Doit être placé en série dans le circuit (couper un fil en deux nœuds).
+    """
+
+    def __init__(self, component_id, node_a, node_b, history_size=500):
+        super().__init__(component_id, {"history_size": history_size})
+        self.node_a = node_a
+        self.node_b = node_b
+        self._history_size = history_size
+
+    def get_nodes(self):
+        return [self.node_a, self.node_b]
+
+    def needs_branch(self):
+        return True
+
+    @property
+    def records_history(self):
+        return True
+
+    @property
+    def history_size(self):
+        return self._history_size
+
+    def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_a = node_map.get(self.node_a, -1)
+        idx_b = node_map.get(self.node_b, -1)
+        branch = branch_map[self.id]
+        # Contrainte : V_a - V_b = 0 (ligne de branche)
+        if idx_a >= 0:
+            G[branch, idx_a] += 1.0
+            G[idx_a, branch] += 1.0
+        if idx_b >= 0:
+            G[branch, idx_b] -= 1.0
+            G[idx_b, branch] -= 1.0
+        b[branch] = 0.0
+
+    def get_state(self, x, node_map, branch_map):
+        branch = branch_map[self.id]
+        current = x[branch]   # courant mesuré = inconnue de branche
+        return {"voltage": 0.0, "current": current}

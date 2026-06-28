@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from simulator.components import Resistor, Capacitor, Inductor
+from simulator.components import Resistor, Capacitor, Inductor, Switch, Voltmeter, Ammeter
 
 def test_resistor_stamp_between_two_nodes():
     """Résistance 1kΩ entre N1 (idx=0) et N2 (idx=1) : conductance 0.001 S."""
@@ -94,3 +94,62 @@ def test_inductor_companion_current():
     # La source compagnon injecte i_prev depuis N2 vers N1
     assert b[0] == pytest.approx(0.5)
     assert b[1] == pytest.approx(-0.5)
+
+
+# ── Tests Switch (Task 6) ─────────────────────────────────────────────────────
+
+def test_switch_open():
+    """Interrupteur ouvert = résistance très grande (1e9 Ω)."""
+    G = np.zeros((2, 2))
+    b = np.zeros(2)
+    sw = Switch("SW1", "N1", "N2", closed=False)
+    sw.stamp(G, b, {"N1": 0, "N2": 1}, {}, dt=1e-5, t=0.0, prev_state={})
+    assert G[0, 0] == pytest.approx(1e-9)
+
+def test_switch_closed():
+    """Interrupteur fermé = résistance très faible (1e-6 Ω)."""
+    G = np.zeros((2, 2))
+    b = np.zeros(2)
+    sw = Switch("SW1", "N1", "N2", closed=True)
+    sw.stamp(G, b, {"N1": 0, "N2": 1}, {}, dt=1e-5, t=0.0, prev_state={})
+    assert G[0, 0] == pytest.approx(1e6)   # 1/1e-6
+
+def test_switch_toggle():
+    """toggle() inverse l'état ouvert/fermé."""
+    sw = Switch("SW1", "N1", "N2", closed=False)
+    assert sw.closed is False
+    sw.toggle()
+    assert sw.closed is True
+
+def test_voltmeter_is_high_impedance():
+    """Voltmètre = résistance 1e9 Ω (invisible pour le circuit)."""
+    G = np.zeros((1, 1))
+    b = np.zeros(1)
+    vm = Voltmeter("VM1", "N1", "GND", history_size=100)
+    vm.stamp(G, b, {"N1": 0}, {}, dt=1e-5, t=0.0, prev_state={})
+    assert G[0, 0] == pytest.approx(1e-9)
+
+def test_voltmeter_records_history():
+    vm = Voltmeter("VM1", "N1", "GND")
+    assert vm.records_history is True
+    assert vm.history_size == 500
+
+def test_ammeter_needs_branch():
+    am = Ammeter("AM1", "N1", "N2", history_size=200)
+    assert am.needs_branch() is True
+    assert am.records_history is True
+
+def test_ammeter_stamp():
+    """Ampèremètre = source de tension 0V : stamp comme une source de tension."""
+    G = np.zeros((3, 3))   # 2 nœuds + 1 branche
+    b = np.zeros(3)
+    # N1=0, N2=1, branche AM1=2
+    am = Ammeter("AM1", "N1", "N2")
+    am.stamp(G, b, {"N1": 0, "N2": 1}, {"AM1": 2}, dt=1e-5, t=0.0, prev_state={})
+    # Ligne de branche : G[2,0]=1, G[2,1]=-1
+    assert G[2, 0] == pytest.approx(1.0)
+    assert G[2, 1] == pytest.approx(-1.0)
+    # Colonnes KCL : G[0,2]=1, G[1,2]=-1
+    assert G[0, 2] == pytest.approx(1.0)
+    assert G[1, 2] == pytest.approx(-1.0)
+    assert b[2] == pytest.approx(0.0)   # tension imposée = 0 V
