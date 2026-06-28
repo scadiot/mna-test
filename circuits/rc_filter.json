@@ -1,0 +1,41 @@
+{
+  "name": "Filtre RC passe-bas (100 Hz, 5V sinus)",
+  "dt": 1e-5,
+  "components": [
+    {
+      "id": "V1",
+      "type": "voltage_source",
+      "node_pos": "N1",
+      "node_neg": "GND",
+      "params": { "waveform": "sine", "amplitude": 5.0, "frequency": 100.0 }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "node_a": "N1",
+      "node_b": "N2",
+      "params": { "resistance": 1000.0 }
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "node_a": "N2",
+      "node_b": "GND",
+      "params": { "capacitance": 1.59e-6 }
+    },
+    {
+      "id": "VM_in",
+      "type": "voltmeter",
+      "node_a": "N1",
+      "node_b": "GND",
+      "params": { "history_size": 500 }
+    },
+    {
+      "id": "VM_out",
+      "type": "voltmeter",
+      "node_a": "N2",
+      "node_b": "GND",
+      "params": { "history_size": 500 }
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "name": "Transistor NPN en commutation (signal créneau 10 Hz)",
+  "dt": 1e-5,
+  "components": [
+    {
+      "id": "V_base",
+      "type": "voltage_source",
+      "node_pos": "N_base_in",
+      "node_neg": "GND",
+      "params": { "waveform": "square", "amplitude": 5.0, "frequency": 10.0 }
+    },
+    {
+      "id": "R_base",
+      "type": "resistor",
+      "node_a": "N_base_in",
+      "node_b": "N_base",
+      "params": { "resistance": 10000.0 }
+    },
+    {
+      "id": "V_cc",
+      "type": "voltage_source",
+      "node_pos": "N_vcc",
+      "node_neg": "GND",
+      "params": { "waveform": "dc", "amplitude": 12.0 }
+    },
+    {
+      "id": "R_collector",
+      "type": "resistor",
+      "node_a": "N_vcc",
+      "node_b": "N_collector",
+      "params": { "resistance": 1000.0 }
+    },
+    {
+      "id": "Q1",
+      "type": "transistor_bjt",
+      "node_base": "N_base",
+      "node_collector": "N_collector",
+      "node_emitter": "GND",
+      "params": { "beta": 100, "vce_sat": 0.2, "vbe_threshold": 0.6 }
+    },
+    {
+      "id": "VM_col",
+      "type": "voltmeter",
+      "node_a": "N_collector",
+      "node_b": "GND",
+      "params": { "history_size": 500 }
+    }
+  ]
+}
