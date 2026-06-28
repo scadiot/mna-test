@@ -38,7 +38,7 @@ class ComponentListWidget(tk.Frame):
         self._components = list(components)
         self._listbox.delete(0, tk.END)
         for comp in self._components:
-            label = f"{comp.id:<8} {type(comp).__name__}"
+            label = f"{comp.id:<8} {type(comp).__name__:<14}"
             self._listbox.insert(tk.END, label)
 
     def update_states(self, comp_states):
