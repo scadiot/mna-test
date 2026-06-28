@@ -378,3 +378,102 @@ class CurrentSource(Component):
         va = _node_voltage(x, node_map, self.node_a)
         vb = _node_voltage(x, node_map, self.node_b)
         return {"voltage": va - vb, "current": 0.0}
+
+
+# ── Transistor bipolaire NPN ──────────────────────────────────────────────────
+
+class BJT(Component):
+    """
+    Transistor bipolaire NPN idéal — 3 états :
+      - Bloqué  (cut-off)   : V_BE < vbe_threshold → résistance infinie CE
+      - Actif   (active)    : V_CE > vce_sat → source de courant I_C = β * I_B
+      - Saturé  (saturated) : V_CE <= vce_sat → court-circuit avec Vce_sat
+    L'état est déterminé depuis prev_state (valeurs du pas précédent).
+    """
+
+    def __init__(self, component_id, node_base, node_collector, node_emitter,
+                 beta=100, vce_sat=0.2, vbe_threshold=0.6):
+        super().__init__(component_id, {
+            "beta": beta, "vce_sat": vce_sat, "vbe_threshold": vbe_threshold
+        })
+        self.node_base = node_base
+        self.node_collector = node_collector
+        self.node_emitter = node_emitter
+        self.beta = beta
+        self.vce_sat = vce_sat
+        self.vbe_threshold = vbe_threshold
+
+    def get_nodes(self):
+        return [self.node_base, self.node_collector, self.node_emitter]
+
+    def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_c = node_map.get(self.node_collector, -1)
+        idx_e = node_map.get(self.node_emitter, -1)
+
+        vbe = prev_state.get("vbe", 0.0)
+        vce = prev_state.get("vce", 0.0)
+        i_b = prev_state.get("current", 0.0)
+
+        if vbe < self.vbe_threshold:
+            # Bloqué : résistance très grande entre collector et emitter
+            _stamp_conductance(G, idx_c, idx_e, 1e-9)
+        elif vce > self.vce_sat:
+            # Actif : source de courant contrôlée I_C = β * I_B (de collector vers emitter)
+            i_c = self.beta * i_b
+            _stamp_current(b, idx_e, idx_c, i_c)   # I_C entre dans emitter, sort de collector
+        else:
+            # Saturé : résistance très faible entre C et E (approximation de Vce_sat)
+            _stamp_conductance(G, idx_c, idx_e, 1e6)
+
+    def get_state(self, x, node_map, branch_map):
+        vb = _node_voltage(x, node_map, self.node_base)
+        vc = _node_voltage(x, node_map, self.node_collector)
+        ve = _node_voltage(x, node_map, self.node_emitter)
+        vbe = vb - ve
+        vce = vc - ve
+        # Courant de base approximé (résistance base-emitter = 1kΩ par défaut)
+        i_b = vbe / 1000.0 if vbe >= self.vbe_threshold else 0.0
+        return {"voltage": vce, "current": i_b, "vbe": vbe, "vce": vce}
+
+
+# ── Amplificateur opérationnel idéal ──────────────────────────────────────────
+
+class OpAmp(Component):
+    """
+    Amplificateur opérationnel idéal.
+    Contrainte : V(node_plus) = V(node_minus) (gain infini avec rétroaction négative).
+    Le courant de sortie est l'inconnue de branche — il est injecté sur node_out.
+    """
+
+    def __init__(self, component_id, node_plus, node_minus, node_out):
+        super().__init__(component_id, {})
+        self.node_plus = node_plus
+        self.node_minus = node_minus
+        self.node_out = node_out
+
+    def get_nodes(self):
+        return [self.node_plus, self.node_minus, self.node_out]
+
+    def needs_branch(self):
+        return True
+
+    def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_p = node_map.get(self.node_plus, -1)
+        idx_n = node_map.get(self.node_minus, -1)
+        idx_o = node_map.get(self.node_out, -1)
+        branch = branch_map[self.id]
+        # Ligne de branche : impose V(plus) - V(minus) = 0
+        if idx_p >= 0:
+            G[branch, idx_p] += 1.0
+        if idx_n >= 0:
+            G[branch, idx_n] -= 1.0
+        # Colonne KCL : le courant de sortie est injecté sur node_out
+        if idx_o >= 0:
+            G[idx_o, branch] += 1.0
+        b[branch] = 0.0
+
+    def get_state(self, x, node_map, branch_map):
+        vout = _node_voltage(x, node_map, self.node_out)
+        branch = branch_map[self.id]
+        i_out = x[branch]
+        return {"voltage": vout, "current": i_out}

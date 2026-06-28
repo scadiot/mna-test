@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from simulator.components import Resistor, Capacitor, Inductor, Switch, Voltmeter, Ammeter
 from simulator.components import VoltageSource, CurrentSource
+from simulator.components import BJT, OpAmp
 from simulator.sources import DCSource
 
 def test_resistor_stamp_between_two_nodes():
@@ -188,3 +189,50 @@ def test_current_source_stamp():
 def test_current_source_no_branch():
     isrc = CurrentSource("I1", "N1", "GND", DCSource(1.0))
     assert isrc.needs_branch() is False
+
+
+# ── Tests BJT et OpAmp (Task 8) ───────────────────────────────────────────────
+
+def test_bjt_cutoff():
+    """V_BE < 0.6V → transistor bloqué : résistance infinie CE."""
+    G = np.zeros((3, 3))
+    b = np.zeros(3)
+    # Base=0, Collector=1, Emitter=2; V_B=0.1V, V_E=0V → V_BE=0.1V < seuil
+    bjt = BJT("Q1", "base", "collector", "emitter")
+    node_map = {"base": 0, "collector": 1, "emitter": 2}
+    bjt.stamp(G, b, node_map, {}, dt=1e-5, t=0.0,
+              prev_state={"vbe": 0.1, "vce": 0.0, "current": 0.0})
+    # Conductance CE très faible (bloqué)
+    assert G[1, 1] == pytest.approx(1e-9, rel=1e-3)
+
+def test_bjt_active():
+    """V_BE >= seuil, V_CE > Vce_sat → mode actif : source de courant β*I_B."""
+    G = np.zeros((3, 3))
+    b = np.zeros(3)
+    # V_BE=0.7V (actif), I_B=0.01A → I_C = β*I_B = 1A
+    bjt = BJT("Q1", "base", "collector", "emitter", beta=100)
+    node_map = {"base": 0, "collector": 1, "emitter": 2}
+    bjt.stamp(G, b, node_map, {}, dt=1e-5, t=0.0,
+              prev_state={"vbe": 0.7, "vce": 5.0, "current": 0.01})
+    # Source de courant de collector vers emitter : b[2] += 1.0, b[1] -= 1.0
+    assert b[2] == pytest.approx(1.0)    # I_C entre dans emitter
+    assert b[1] == pytest.approx(-1.0)   # I_C sort du collector
+
+def test_opamp_needs_branch():
+    op = OpAmp("U1", "plus", "minus", "out")
+    assert op.needs_branch() is True
+
+def test_opamp_stamp():
+    """Op-amp idéal : contrainte V+ = V- via ligne de branche."""
+    G = np.zeros((4, 4))   # plus=0, minus=1, out=2, branche=3
+    b = np.zeros(4)
+    op = OpAmp("U1", "plus", "minus", "out")
+    node_map = {"plus": 0, "minus": 1, "out": 2}
+    branch_map = {"U1": 3}
+    op.stamp(G, b, node_map, branch_map, dt=1e-5, t=0.0, prev_state={})
+    # Ligne de branche : V(plus) - V(minus) = 0
+    assert G[3, 0] == pytest.approx(1.0)
+    assert G[3, 1] == pytest.approx(-1.0)
+    # Courant de sortie injecté sur node_out
+    assert G[2, 3] == pytest.approx(1.0)
+    assert b[3] == pytest.approx(0.0)
