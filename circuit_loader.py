@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from simulator.components import (
     Resistor, Capacitor, Inductor, Switch,
     VoltageSource, CurrentSource,
-    BJT, OpAmp, Voltmeter, Ammeter, Diode,
+    BJT, OpAmp, Voltmeter, Ammeter, Diode, Potentiometer,
 )
 from simulator.sources import DCSource, SineSource, PulseSource, SquareSource
 
@@ -77,6 +77,13 @@ def _make_component(data):
     elif comp_type == "ammeter":
         return Ammeter(comp_id, data["node_a"], data["node_b"],
                        int(params.get("history_size", 500)))
+    elif comp_type == "potentiometer":
+        return Potentiometer(
+            comp_id,
+            data["node_a"], data["node_wiper"], data["node_b"],
+            float(params.get("resistance", 1000.0)),
+            float(params.get("ratio", 0.5)),
+        )
     else:
         raise ValueError(f"Type de composant inconnu : '{comp_type}'")
 

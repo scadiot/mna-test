@@ -1,7 +1,7 @@
 # tests/test_circuit_loader.py
 import json, os, tempfile, pytest
 from circuit_loader import load_circuit, Circuit
-from simulator.components import Resistor, Capacitor, VoltageSource, Voltmeter
+from simulator.components import Resistor, Capacitor, VoltageSource, Voltmeter, Potentiometer
 
 def _write_json(data):
     """Écrit un dict en fichier JSON temporaire, retourne le chemin."""
@@ -71,3 +71,46 @@ def test_unknown_type_raises():
     with pytest.raises(ValueError, match="flux_capacitor"):
         load_circuit(path)
     os.unlink(path)
+
+def test_load_potentiometer():
+    """Charge un circuit avec un potentiomètre et vérifie les paramètres."""
+    data = {
+        "name": "Test POT",
+        "dt": 1e-5,
+        "components": [
+            {"id": "V1", "type": "voltage_source", "node_pos": "N1", "node_neg": "GND",
+             "params": {"waveform": "dc", "amplitude": 10.0}},
+            {"id": "POT1", "type": "potentiometer",
+             "node_a": "N1", "node_wiper": "N2", "node_b": "GND",
+             "params": {"resistance": 5000.0, "ratio": 0.3}},
+        ],
+    }
+    path = _write_json(data)
+    circuit = load_circuit(path)
+    os.unlink(path)
+    assert len(circuit.components) == 2
+    pot = circuit.components[1]
+    assert isinstance(pot, Potentiometer)
+    assert pot.resistance == pytest.approx(5000.0)
+    assert pot.ratio == pytest.approx(0.3)
+    assert pot.node_a == "N1"
+    assert pot.node_wiper == "N2"
+    assert pot.node_b == "GND"
+
+def test_load_potentiometer_defaults():
+    """Paramètres omis → valeurs par défaut resistance=1000, ratio=0.5."""
+    data = {
+        "name": "Test POT défauts",
+        "dt": 1e-5,
+        "components": [
+            {"id": "POT1", "type": "potentiometer",
+             "node_a": "N1", "node_wiper": "N2", "node_b": "GND",
+             "params": {}},
+        ],
+    }
+    path = _write_json(data)
+    circuit = load_circuit(path)
+    os.unlink(path)
+    pot = circuit.components[0]
+    assert pot.resistance == pytest.approx(1000.0)
+    assert pot.ratio == pytest.approx(0.5)
