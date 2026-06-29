@@ -31,9 +31,9 @@ def test_no_edge_returns_none():
     assert compute_trigger_window(history, width=5, level=5.0) is None
 
 
-def test_only_falling_edges_returns_none():
+def test_rising_edge_too_recent_returns_none():
     history = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0]
-    # front montant à i=4 (history[3]=-1 < 0 <= history[4]=1), width=6 → max_start=2 → inéligible
+    # Le seul front montant à i=4 (history[3]=-1.0 < 0.0 <= history[4]=1.0) est inéligible car trop récent pour width=6 → max_start=2
     assert compute_trigger_window(history, width=6, level=0.0) is None
 
 
