@@ -36,14 +36,14 @@
       "type": "voltmeter",
       "node_a": "N_in",
       "node_b": "GND",
-      "params": { "history_size": 500 }
+      "params": { "history_size": 3000 }
     },
     {
       "id": "VM_out",
       "type": "voltmeter",
       "node_a": "N_out",
       "node_b": "GND",
-      "params": { "history_size": 500 }
+      "params": { "history_size": 3000 }
     }
   ]
 }
