@@ -134,7 +134,9 @@ class DetailPanelWidget(tk.Frame):
                     # Repli : derniers échantillons alignés à droite
                     ys = history[-width:]
                     xs = range(width - len(ys), width)
-                x_max = width - 1
+                # max(..., 1) évite un axe de largeur nulle au tout début du
+                # remplissage (width == 1), qui ferait râler matplotlib.
+                x_max = max(width - 1, 1)
             else:
                 # Comportement historique : tout le buffer aligné à droite
                 n = comp.history_size
