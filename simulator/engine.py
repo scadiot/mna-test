@@ -5,6 +5,34 @@ import numpy as np
 from simulator.components import Inductor, Capacitor, Ammeter
 
 
+# Plafond d'occupation CPU d'un cœur quand le moteur est en retard : la durée
+# de sommeil vaut step_duration * THROTTLE_RATIO, ce qui borne la fraction CPU
+# à 1 / (1 + THROTTLE_RATIO). 1.0 → ~50 % d'un cœur au maximum.
+THROTTLE_RATIO = 1.0
+
+
+def _compute_sleep(step_duration, now, next_deadline, dt):
+    """
+    Décide combien de temps dormir après un pas de simulation (fonction pure).
+
+    step_duration : durée d'exécution réelle du pas qui vient d'être calculé (s)
+    now           : instant courant (time.monotonic())
+    next_deadline : échéance temps réel visée pour ce pas
+    dt            : pas de temps simulé (s)
+
+    Retourne (sleep_seconds, new_deadline).
+      - En avance (now < next_deadline) : on dort le slack restant et l'échéance
+        suivante avance de dt → cadence temps réel pour les circuits légers.
+      - En retard (now >= next_deadline) : on ne spinne pas. On dort une durée
+        proportionnelle au coût du pas (throttle) et on ré-ancre l'échéance sur
+        now pour ne pas accumuler de dette → slow-motion à CPU borné.
+    """
+    slack = next_deadline - now
+    if slack > 0:
+        return slack, next_deadline + dt
+    return step_duration * THROTTLE_RATIO, now + dt
+
+
 class SimulationEngine:
     """
     Moteur de simulation MNA (Modified Nodal Analysis).
