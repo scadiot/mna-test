@@ -5,6 +5,34 @@ import numpy as np
 from simulator.components import Inductor, Capacitor, Ammeter
 
 
+# Plafond d'occupation CPU d'un cœur quand le moteur est en retard : la durée
+# de sommeil vaut step_duration * THROTTLE_RATIO, ce qui borne la fraction CPU
+# à 1 / (1 + THROTTLE_RATIO). 1.0 → ~50 % d'un cœur au maximum.
+THROTTLE_RATIO = 1.0
+
+
+def _compute_sleep(step_duration, now, next_deadline, dt):
+    """
+    Décide combien de temps dormir après un pas de simulation (fonction pure).
+
+    step_duration : durée d'exécution réelle du pas qui vient d'être calculé (s)
+    now           : instant courant (time.monotonic())
+    next_deadline : échéance temps réel visée pour ce pas
+    dt            : pas de temps simulé (s)
+
+    Retourne (sleep_seconds, new_deadline).
+      - En avance (now < next_deadline) : on dort le slack restant et l'échéance
+        suivante avance de dt → cadence temps réel pour les circuits légers.
+      - En retard (now >= next_deadline) : on ne spinne pas. On dort une durée
+        proportionnelle au coût du pas (throttle) et on ré-ancre l'échéance sur
+        now pour ne pas accumuler de dette → slow-motion à CPU borné.
+    """
+    slack = next_deadline - now
+    if slack > 0:
+        return slack, next_deadline + dt
+    return step_duration * THROTTLE_RATIO, now + dt
+
+
 class SimulationEngine:
     """
     Moteur de simulation MNA (Modified Nodal Analysis).
@@ -101,8 +129,9 @@ class SimulationEngine:
         with self._state._lock:
             self._state.running = True
 
-        # Temps de référence pour synchroniser la simulation avec le temps réel
-        t_real_start = time.monotonic()
+        # Échéance temps réel glissante : ré-ancrée quand le moteur prend du
+        # retard (cf. _compute_sleep) pour ne jamais saturer un cœur CPU.
+        next_deadline = time.monotonic() + self._dt
 
         while True:
             # Vérifie si l'arrêt a été demandé
@@ -110,19 +139,19 @@ class SimulationEngine:
                 if not self._state.running:
                     break
 
+            step_start = time.monotonic()
             ok = self._step(t)
             if not ok:
                 break   # erreur MNA → arrêt propre
+            step_duration = time.monotonic() - step_start
 
             t += self._dt
 
-            # Calcule le décalage entre temps simulé et temps réel écoulé
-            # Si on est en avance, on dort ; si on est en retard, on continue
-            t_real_elapsed = time.monotonic() - t_real_start
-            t_ahead = t - t_real_elapsed
-            if t_ahead > 1e-4:
-                # On est en avance de plus de 100µs : on dort un peu
-                time.sleep(t_ahead)
+            sleep_s, next_deadline = _compute_sleep(
+                step_duration, time.monotonic(), next_deadline, self._dt
+            )
+            if sleep_s > 0:
+                time.sleep(sleep_s)
 
     def start(self):
         """Démarre la simulation dans un thread daemon."""
