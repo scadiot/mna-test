@@ -56,8 +56,219 @@ class EditorCanvas(tk.Frame):
         self._bind_events()
 
     def _bind_events(self):
-        # Placeholder — interactions seront ajoutées en Task 5
-        pass
+        self.canvas.bind("<ButtonPress-1>", self._on_press)
+        self.canvas.bind("<B1-Motion>", self._on_motion)
+        self.canvas.bind("<ButtonRelease-1>", self._on_release)
+        self.canvas.bind("<Double-Button-1>", self._on_double_click)
+        self.canvas.bind("<Delete>", self._on_delete)
+        self.canvas.bind("<KeyPress-Delete>", self._on_delete)
+        self.canvas.focus_set()
+
+    def _item_at(self, x, y):
+        """Retourne (kind, ...) pour l'item Tkinter le plus proche : 'comp', 'node', 'pin', 'wire'."""
+        items = self.canvas.find_overlapping(x - 2, y - 2, x + 2, y + 2)
+        # Build set of known comp_ids for robust tag parsing
+        known_comp_ids = {c.id for c in self.model.components}
+        for item in reversed(items):
+            tags = self.canvas.gettags(item)
+            for tag in tags:
+                if tag.startswith("pin_"):
+                    # Format: pin_{comp_id}_{pin_name}
+                    # comp_id does not contain underscores in practice (R1, SW1, etc.)
+                    # pin_name may contain underscores (node_a, node_pos, etc.)
+                    # Use known comp_ids to robustly split the tag
+                    rest = tag[4:]  # strip "pin_"
+                    matched_comp_id = None
+                    for cid in known_comp_ids:
+                        if rest.startswith(cid + "_"):
+                            matched_comp_id = cid
+                            break
+                    if matched_comp_id:
+                        pin_name = rest[len(matched_comp_id) + 1:]
+                        return ("pin", matched_comp_id, pin_name)
+                    # Fallback: split on first underscore after "pin_"
+                    parts = tag.split("_", 2)
+                    if len(parts) == 3:
+                        return ("pin", parts[1], parts[2])
+                elif tag.startswith("node_"):
+                    return ("node", tag[5:])
+                elif tag.startswith("wire_"):
+                    # Format: wire_{comp_id}_{pin_name}
+                    rest = tag[5:]  # strip "wire_"
+                    matched_comp_id = None
+                    for cid in known_comp_ids:
+                        if rest.startswith(cid + "_"):
+                            matched_comp_id = cid
+                            break
+                    if matched_comp_id:
+                        pin_name = rest[len(matched_comp_id) + 1:]
+                        return ("wire", matched_comp_id, pin_name)
+                    parts = tag.split("_", 2)
+                    if len(parts) == 3:
+                        return ("wire", parts[1], parts[2])
+                elif tag.startswith("comp_"):
+                    return ("comp", tag[5:])
+        return None
+
+    def _on_press(self, event):
+        self.canvas.focus_set()
+        hit = self._item_at(event.x, event.y)
+        self._drag_start = (event.x, event.y)
+
+        if hit is None:
+            self._deselect()
+            return
+
+        kind = hit[0]
+
+        if kind == "pin":
+            _, comp_id, pin_name = hit
+            self._state = "CONNECTING"
+            self._connect_source = (comp_id, pin_name)
+            self._connect_line = None
+
+        elif kind == "node":
+            node_id = hit[1]
+            self._selected_comp = None
+            self._selected_node = node_id
+            self._selected_wire = None
+            self._state = "SELECTED"
+            self.redraw()
+            self._notify_selection()
+
+        elif kind == "wire":
+            _, comp_id, pin_name = hit
+            self._selected_comp = None
+            self._selected_node = None
+            self._selected_wire = (comp_id, pin_name)
+            self._state = "SELECTED"
+            self.redraw()
+            self._notify_selection()
+
+        elif kind == "comp":
+            comp_id = hit[1]
+            self._selected_comp = comp_id
+            self._selected_node = None
+            self._selected_wire = None
+            self._state = "SELECTED"
+            self.redraw()
+            self._notify_selection()
+
+    def _on_motion(self, event):
+        if self._state == "SELECTED":
+            dx = abs(event.x - self._drag_start[0])
+            dy = abs(event.y - self._drag_start[1])
+            if dx > 3 or dy > 3:
+                self._state = "DRAGGING"
+
+        elif self._state == "DRAGGING":
+            dx = event.x - self._drag_start[0]
+            dy = event.y - self._drag_start[1]
+            self._drag_start = (event.x, event.y)
+            if self._selected_comp:
+                comp = self.model.get_component(self._selected_comp)
+                if comp:
+                    comp.x += dx
+                    comp.y += dy
+                    self.model._touch()
+            elif self._selected_node:
+                node = self.model.get_node(self._selected_node)
+                if node:
+                    node.x += dx
+                    node.y += dy
+                    self.model._touch()
+            self.redraw()
+
+        elif self._state == "CONNECTING":
+            if self._connect_line:
+                self.canvas.delete(self._connect_line)
+            src_comp_id, pin_name = self._connect_source
+            comp = self.model.get_component(src_comp_id)
+            template = COMPONENT_TEMPLATES.get(comp.type, {})
+            pin = next((p for p in template.get("pins", []) if p.name == pin_name), None)
+            if pin:
+                px, py = pin_abs_pos(comp, pin)
+                self._connect_line = self.canvas.create_line(
+                    px, py, event.x, event.y,
+                    fill="#0055ff", width=2, dash=(4, 4))
+
+    def _on_release(self, event):
+        if self._state == "DRAGGING":
+            self._state = "SELECTED"
+            self._notify_model()
+
+        elif self._state == "CONNECTING":
+            if self._connect_line:
+                self.canvas.delete(self._connect_line)
+                self._connect_line = None
+            hit = self._item_at(event.x, event.y)
+            if hit and hit[0] == "node":
+                comp_id, pin_name = self._connect_source
+                self.model.connect_pin(comp_id, pin_name, hit[1])
+                self._notify_model()
+            self._connect_source = None
+            self._state = "IDLE"
+            self.redraw()
+
+    def _on_double_click(self, event):
+        hit = self._item_at(event.x, event.y)
+        if hit is None:
+            # Créer un nouveau nœud
+            existing_ids = {n.id for n in self.model.nodes}
+            i = 1
+            while f"N{i}" in existing_ids:
+                i += 1
+            node = NodeData(id=f"N{i}", x=float(event.x), y=float(event.y), is_gnd=False)
+            self.model.add_node(node)
+            self.redraw()
+            self._notify_model()
+
+    def _on_delete(self, event):
+        if self._selected_comp:
+            self.model.remove_component(self._selected_comp)
+            self._selected_comp = None
+            self.redraw()
+            self._notify_model()
+            self._notify_selection()
+
+        elif self._selected_node:
+            node_id = self._selected_node
+            # Vérifier si connecté
+            connected_pins = [
+                (c.id, pn)
+                for c in self.model.components
+                for pn, nid in c.pin_connections.items()
+                if nid == node_id
+            ]
+            if connected_pins:
+                from tkinter import messagebox
+                ok = messagebox.askyesno(
+                    "Supprimer le nœud",
+                    f"Le nœud {node_id} est connecté à {len(connected_pins)} patte(s).\n"
+                    "Supprimer quand même et retirer les liaisons ?")
+                if not ok:
+                    return
+            self.model.remove_node(node_id)
+            self._selected_node = None
+            self.redraw()
+            self._notify_model()
+            self._notify_selection()
+
+        elif self._selected_wire:
+            comp_id, pin_name = self._selected_wire
+            self.model.disconnect_pin(comp_id, pin_name)
+            self._selected_wire = None
+            self.redraw()
+            self._notify_model()
+            self._notify_selection()
+
+    def _deselect(self):
+        self._selected_comp = None
+        self._selected_node = None
+        self._selected_wire = None
+        self._state = "IDLE"
+        self.redraw()
+        self._notify_selection()
 
     def set_on_selection_change(self, cb):
         self._on_selection_change = cb
