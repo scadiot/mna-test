@@ -523,3 +523,49 @@ class OpAmp(Component):
         branch = branch_map[self.id]
         i_out = x[branch]
         return {"voltage": vout, "current": i_out}
+
+
+# ── Potentiomètre ─────────────────────────────────────────────────────────────
+
+class Potentiometer(Component):
+    """
+    Potentiomètre 3 broches — modélisé par deux conductances en série :
+      G1 = 1 / (ratio × R)       entre node_a et node_wiper
+      G2 = 1 / ((1-ratio) × R)   entre node_wiper et node_b
+    Le ratio est clampé à [0.01, 0.99] dans stamp() pour éviter les divisions
+    par zéro aux extrêmes. set_ratio() stocke la valeur brute.
+    """
+
+    def __init__(self, component_id, node_a, node_wiper, node_b,
+                 resistance, ratio=0.5):
+        super().__init__(component_id, {"resistance": resistance, "ratio": ratio})
+        self.node_a = node_a
+        self.node_wiper = node_wiper
+        self.node_b = node_b
+        self.resistance = resistance
+        self.ratio = ratio
+
+    def get_nodes(self):
+        return [self.node_a, self.node_wiper, self.node_b]
+
+    def set_ratio(self, value: float) -> None:
+        self.ratio = value
+        self.params["ratio"] = value
+
+    def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_a = node_map.get(self.node_a, -1)
+        idx_w = node_map.get(self.node_wiper, -1)
+        idx_b = node_map.get(self.node_b, -1)
+        ratio_clamped = max(0.01, min(0.99, self.ratio))
+        g1 = 1.0 / (ratio_clamped * self.resistance)
+        g2 = 1.0 / ((1.0 - ratio_clamped) * self.resistance)
+        _stamp_conductance(G, idx_a, idx_w, g1)
+        _stamp_conductance(G, idx_w, idx_b, g2)
+
+    def get_state(self, x, node_map, branch_map):
+        va = _node_voltage(x, node_map, self.node_a)
+        vw = _node_voltage(x, node_map, self.node_wiper)
+        vb = _node_voltage(x, node_map, self.node_b)
+        ratio_clamped = max(0.01, min(0.99, self.ratio))
+        g1 = 1.0 / (ratio_clamped * self.resistance)
+        return {"voltage": va - vb, "current": g1 * (va - vw)}

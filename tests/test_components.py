@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from simulator.components import Resistor, Capacitor, Inductor, Switch, Voltmeter, Ammeter
 from simulator.components import VoltageSource, CurrentSource
-from simulator.components import BJT, OpAmp
+from simulator.components import BJT, OpAmp, Potentiometer
 from simulator.sources import DCSource
 
 def test_resistor_stamp_between_two_nodes():
@@ -238,3 +238,94 @@ def test_opamp_stamp():
     # Courant de sortie injecté sur node_out
     assert G[2, 3] == pytest.approx(1.0)
     assert b[3] == pytest.approx(0.0)
+
+
+# ── Tests Potentiomètre ───────────────────────────────────────────────────────
+
+def test_potentiometer_get_nodes():
+    pot = Potentiometer("POT1", "N1", "N2", "N3", 1000.0)
+    assert set(pot.get_nodes()) == {"N1", "N2", "N3"}
+
+def test_potentiometer_does_not_need_branch():
+    pot = Potentiometer("POT1", "N1", "N2", "N3", 1000.0)
+    assert pot.needs_branch() is False
+
+def test_potentiometer_stamp_ratio_half():
+    """ratio=0.5, R=1000Ω : deux conductances égales G1=G2=0.002 S."""
+    G = np.zeros((3, 3))
+    b = np.zeros(3)
+    # node_a=0, node_wiper=1, node_b=2
+    pot = Potentiometer("POT1", "N1", "N2", "N3", 1000.0, ratio=0.5)
+    pot.stamp(G, b, {"N1": 0, "N2": 1, "N3": 2}, {}, dt=1e-5, t=0.0, prev_state={})
+    G1 = 1.0 / (0.5 * 1000.0)  # 0.002
+    G2 = 1.0 / (0.5 * 1000.0)  # 0.002
+    assert G[0, 0] == pytest.approx(G1)
+    assert G[0, 1] == pytest.approx(-G1)
+    assert G[1, 0] == pytest.approx(-G1)
+    assert G[1, 1] == pytest.approx(G1 + G2)
+    assert G[1, 2] == pytest.approx(-G2)
+    assert G[2, 1] == pytest.approx(-G2)
+    assert G[2, 2] == pytest.approx(G2)
+    assert np.all(b == 0.0)
+
+def test_potentiometer_stamp_ratio_quarter():
+    """ratio=0.25, R=1000Ω : G1=0.004 S, G2=1/750 S."""
+    G = np.zeros((3, 3))
+    b = np.zeros(3)
+    pot = Potentiometer("POT1", "N1", "N2", "N3", 1000.0, ratio=0.25)
+    pot.stamp(G, b, {"N1": 0, "N2": 1, "N3": 2}, {}, dt=1e-5, t=0.0, prev_state={})
+    G1 = 1.0 / (0.25 * 1000.0)   # 0.004
+    G2 = 1.0 / (0.75 * 1000.0)   # ~0.001333
+    assert G[0, 0] == pytest.approx(G1)
+    assert G[2, 2] == pytest.approx(G2)
+
+def test_potentiometer_stamp_clamps_zero():
+    """ratio=0.0 est clampé à 0.01 dans stamp() pour éviter la division par zéro."""
+    G = np.zeros((3, 3))
+    b = np.zeros(3)
+    pot = Potentiometer("POT1", "N1", "N2", "N3", 1000.0, ratio=0.0)
+    pot.stamp(G, b, {"N1": 0, "N2": 1, "N3": 2}, {}, dt=1e-5, t=0.0, prev_state={})
+    G1_expected = 1.0 / (0.01 * 1000.0)  # ratio clampé à 0.01
+    assert G[0, 0] == pytest.approx(G1_expected)
+
+def test_potentiometer_stamp_clamps_one():
+    """ratio=1.0 est clampé à 0.99 dans stamp() pour éviter la division par zéro."""
+    G = np.zeros((3, 3))
+    b = np.zeros(3)
+    pot = Potentiometer("POT1", "N1", "N2", "N3", 1000.0, ratio=1.0)
+    pot.stamp(G, b, {"N1": 0, "N2": 1, "N3": 2}, {}, dt=1e-5, t=0.0, prev_state={})
+    # ratio clampé à 0.99 → G2 = 1/(0.01*1000) = 0.1
+    assert G[2, 2] == pytest.approx(1.0 / (0.01 * 1000.0))
+
+def test_potentiometer_stamp_with_gnd():
+    """node_b connecté à GND (absent de node_map) : seule la partie A-W est stampée."""
+    G = np.zeros((2, 2))
+    b = np.zeros(2)
+    pot = Potentiometer("POT1", "N1", "N2", "GND", 1000.0, ratio=0.5)
+    pot.stamp(G, b, {"N1": 0, "N2": 1}, {}, dt=1e-5, t=0.0, prev_state={})
+    G1 = 1.0 / (0.5 * 1000.0)
+    G2 = 1.0 / (0.5 * 1000.0)
+    assert G[0, 0] == pytest.approx(G1)
+    assert G[1, 1] == pytest.approx(G1 + G2)   # G2 connecté à GND : seulement diag N2
+
+def test_potentiometer_get_state():
+    """Va=10V, Vw=6V, Vb=2V, ratio=0.5, R=1000Ω → voltage=8V, current=0.008A."""
+    node_map = {"N1": 0, "N2": 1, "N3": 2}
+    x = np.array([10.0, 6.0, 2.0])
+    pot = Potentiometer("POT1", "N1", "N2", "N3", 1000.0, ratio=0.5)
+    state = pot.get_state(x, node_map, {})
+    assert state["voltage"] == pytest.approx(8.0)    # Va - Vb
+    assert state["current"] == pytest.approx(0.008)  # G1 * (Va - Vw) = 0.002 * 4
+
+def test_potentiometer_set_ratio():
+    """set_ratio() met à jour ratio et params."""
+    pot = Potentiometer("POT1", "N1", "N2", "N3", 1000.0, ratio=0.5)
+    pot.set_ratio(0.75)
+    assert pot.ratio == pytest.approx(0.75)
+    assert pot.params["ratio"] == pytest.approx(0.75)
+
+def test_potentiometer_params():
+    """Les paramètres contiennent resistance et ratio."""
+    pot = Potentiometer("POT1", "N1", "N2", "N3", 2200.0, ratio=0.3)
+    assert pot.params["resistance"] == pytest.approx(2200.0)
+    assert pot.params["ratio"] == pytest.approx(0.3)
