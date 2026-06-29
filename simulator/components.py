@@ -169,8 +169,9 @@ class Inductor(Component):
         i_prev = prev_state.get("current", 0.0)
         # Conductance compagnon
         _stamp_conductance(G, idx_a, idx_b, g_eq)
-        # Source de courant compagnon : injecte i_prev depuis idx_b vers idx_a
-        _stamp_current(b, idx_a, idx_b, i_prev)
+        # Source de courant compagnon : le courant de branche i(t)=g_eq*v(t)+i_prev
+        # circule de idx_a vers idx_b, donc i_prev quitte idx_a (injection négative).
+        _stamp_current(b, idx_a, idx_b, -i_prev)
 
     def get_state(self, x, node_map, branch_map):
         va = _node_voltage(x, node_map, self.node_a)

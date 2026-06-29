@@ -1,0 +1,55 @@
+{
+  "name": "Circuit RLC série — réponse à l'échelon (sous-amorti)",
+  "dt": 1e-6,
+  "components": [
+    {
+      "id": "V1",
+      "type": "voltage_source",
+      "node_pos": "N1",
+      "node_neg": "GND",
+      "params": { "waveform": "dc", "amplitude": 12.0 }
+    },
+    {
+      "id": "SW1",
+      "type": "switch",
+      "node_a": "N1",
+      "node_b": "N2",
+      "params": { "closed": false }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "node_a": "N2",
+      "node_b": "N3",
+      "params": { "resistance": 10.0 }
+    },
+    {
+      "id": "L1",
+      "type": "inductor",
+      "node_a": "N3",
+      "node_b": "N4",
+      "params": { "inductance": 0.001 }
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "node_a": "N4",
+      "node_b": "N5",
+      "params": { "capacitance": 1e-6 }
+    },
+    {
+      "id": "AM1",
+      "type": "ammeter",
+      "node_a": "N5",
+      "node_b": "GND",
+      "params": { "history_size": 500 }
+    },
+    {
+      "id": "VM_C",
+      "type": "voltmeter",
+      "node_a": "N4",
+      "node_b": "GND",
+      "params": { "history_size": 500 }
+    }
+  ]
+}

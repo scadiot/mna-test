@@ -1,0 +1,49 @@
+{
+  "name": "Amplificateur inverseur a AOp (gain -3, 1V/100Hz sinus)",
+  "dt": 1e-5,
+  "components": [
+    {
+      "id": "V1",
+      "type": "voltage_source",
+      "node_pos": "N_in",
+      "node_neg": "GND",
+      "params": { "waveform": "sine", "amplitude": 1.0, "frequency": 100.0 }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "node_a": "N_in",
+      "node_b": "N_fb",
+      "params": { "resistance": 1000.0 }
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "node_a": "N_fb",
+      "node_b": "N_out",
+      "params": { "resistance": 3000.0 }
+    },
+    {
+      "id": "U1",
+      "type": "opamp",
+      "node_plus": "GND",
+      "node_minus": "N_fb",
+      "node_out": "N_out",
+      "params": {}
+    },
+    {
+      "id": "VM_in",
+      "type": "voltmeter",
+      "node_a": "N_in",
+      "node_b": "GND",
+      "params": { "history_size": 500 }
+    },
+    {
+      "id": "VM_out",
+      "type": "voltmeter",
+      "node_a": "N_out",
+      "node_b": "GND",
+      "params": { "history_size": 500 }
+    }
+  ]
+}

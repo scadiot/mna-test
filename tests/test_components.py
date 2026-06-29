@@ -94,9 +94,10 @@ def test_inductor_companion_current():
     dt = 1e-3
     ind = Inductor("L1", "N1", "N2", inductance=1e-3)
     ind.stamp(G, b, {"N1": 0, "N2": 1}, {}, dt=dt, t=dt, prev_state={"voltage": 0.0, "current": 0.5})
-    # La source compagnon injecte i_prev depuis N2 vers N1
-    assert b[0] == pytest.approx(0.5)
-    assert b[1] == pytest.approx(-0.5)
+    # Le courant de branche i(t)=g_eq*v(t)+i_prev circule de N1 vers N2 :
+    # i_prev quitte N1 (injection négative) et entre dans N2.
+    assert b[0] == pytest.approx(-0.5)
+    assert b[1] == pytest.approx(0.5)
 
 
 # ── Tests Switch (Task 6) ─────────────────────────────────────────────────────
