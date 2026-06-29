@@ -29,6 +29,7 @@ class DetailPanelWidget(tk.Frame):
 
         # Bouton toggle pour les interrupteurs
         self._toggle_btn = None
+        self._ratio_slider = None
 
     def show_component(self, component):
         """Affiche les informations statiques d'un composant (appel au clic)."""
@@ -39,6 +40,10 @@ class DetailPanelWidget(tk.Frame):
             self._toggle_btn.destroy()
             self._toggle_btn = None
 
+        if self._ratio_slider:
+            self._ratio_slider.destroy()
+            self._ratio_slider = None
+
         # Affiche les paramètres JSON du composant
         lines = [f"ID      : {component.id}",
                  f"Type    : {type(component).__name__}",
@@ -48,14 +53,23 @@ class DetailPanelWidget(tk.Frame):
             lines.append(f"  {key:<14}: {val}")
         self._info_var.set("\n".join(lines))
 
-        # Bouton toggle pour l'interrupteur
-        from simulator.components import Switch
+        # Bouton toggle pour l'interrupteur et slider pour le potentiomètre
+        from simulator.components import Switch, Potentiometer
         if isinstance(component, Switch):
             self._toggle_btn = tk.Button(
                 self, text="Basculer l'interrupteur",
                 command=component.toggle
             )
             self._toggle_btn.pack(pady=5)
+        elif isinstance(component, Potentiometer):
+            tk.Label(self, text="Ratio curseur :").pack()
+            self._ratio_slider = tk.Scale(
+                self, from_=0.0, to=1.0, resolution=0.01,
+                orient=tk.HORIZONTAL, length=200,
+                command=lambda v: component.set_ratio(float(v)),
+            )
+            self._ratio_slider.set(component.ratio)
+            self._ratio_slider.pack(pady=5)
 
         # Affiche ou masque le graphique
         if component.records_history:
