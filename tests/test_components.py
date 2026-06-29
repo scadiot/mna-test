@@ -216,9 +216,30 @@ def test_bjt_active():
     node_map = {"base": 0, "collector": 1, "emitter": 2}
     bjt.stamp(G, b, node_map, {}, dt=1e-5, t=0.0,
               prev_state={"vbe": 0.7, "vce": 5.0, "current": 0.01})
-    # Source de courant de collector vers emitter : b[2] += 1.0, b[1] -= 1.0
-    assert b[2] == pytest.approx(1.0)    # I_C entre dans emitter
-    assert b[1] == pytest.approx(-1.0)   # I_C sort du collector
+    # Source de courant I_C = β*I_B = 1A : sort du collector (b[1] -= 1.0)
+    assert b[1] == pytest.approx(-1.0)
+    # La jonction base-émetteur passante est modélisée : conductance B-E + offset
+    g_be = 1.0 / BJT.R_BE_ON
+    assert G[0, 0] == pytest.approx(g_be)    # base
+    assert G[0, 2] == pytest.approx(-g_be)   # base ↔ emitter
+    # I_C (1A) sur l'émetteur moins l'offset de seuil de la jonction (0.6/R_BE_ON)
+    offset = bjt.vbe_threshold / BJT.R_BE_ON
+    assert b[2] == pytest.approx(1.0 - offset)
+
+
+def test_bjt_active_base_draws_current():
+    """En mode actif, la jonction B-E impose un courant de base réel (≠ 0)."""
+    G = np.zeros((3, 3))
+    b = np.zeros(3)
+    bjt = BJT("Q1", "base", "collector", "emitter", beta=100)
+    node_map = {"base": 0, "collector": 1, "emitter": 2}
+    bjt.stamp(G, b, node_map, {}, dt=1e-5, t=0.0,
+              prev_state={"vbe": 0.7, "vce": 5.0, "current": 0.01})
+    # V_base=0.65V, V_emitter=0V → V_BE=0.65V au-dessus du seuil → I_B > 0
+    x = np.array([0.65, 5.0, 0.0])
+    state = bjt.get_state(x, node_map, {})
+    assert state["current"] > 0.0
+    assert state["current"] == pytest.approx((0.65 - 0.6) / BJT.R_BE_ON)
 
 def test_opamp_needs_branch():
     op = OpAmp("U1", "plus", "minus", "out")

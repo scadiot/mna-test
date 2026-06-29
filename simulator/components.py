@@ -388,12 +388,22 @@ class CurrentSource(Component):
 
 class BJT(Component):
     """
-    Transistor bipolaire NPN idéal — 3 états :
-      - Bloqué  (cut-off)   : V_BE < vbe_threshold → résistance infinie CE
+    Transistor bipolaire NPN — modèle compagnon linéarisé par morceaux (3 états),
+    l'état étant déterminé depuis prev_state (valeurs du pas précédent) :
+      - Bloqué  (cut-off)   : V_BE < vbe_threshold → jonction B-E ouverte, C-E ouvert
       - Actif   (active)    : V_CE > vce_sat → source de courant I_C = β * I_B
-      - Saturé  (saturated) : V_CE <= vce_sat → court-circuit avec Vce_sat
-    L'état est déterminé depuis prev_state (valeurs du pas précédent).
+      - Saturé  (saturated) : V_CE <= vce_sat → quasi court-circuit C-E
+
+    La jonction base-émetteur est explicitement modélisée (conductance R_BE_ON +
+    offset de seuil) de sorte que le **courant de base traverse réellement le
+    circuit externe** : V_BE ≈ vbe_threshold + R_BE_ON·I_B. C'est ce courant de
+    base, fixé par la résistance de base externe, qui pilote I_C = β·I_B.
     """
+
+    R_BE_ON  = 10.0    # Ω — résistance dynamique de la jonction B-E passante
+    R_BE_OFF = 1e9     # Ω — jonction B-E bloquée
+    R_CE_OFF = 1e-9    # S — conductance C-E bloquée (quasi ouvert)
+    R_CE_SAT = 1.0     # Ω — résistance C-E saturée (V_CE ≈ vce_sat)
 
     def __init__(self, component_id, node_base, node_collector, node_emitter,
                  beta=100, vce_sat=0.2, vbe_threshold=0.6):
@@ -406,28 +416,56 @@ class BJT(Component):
         self.beta = beta
         self.vce_sat = vce_sat
         self.vbe_threshold = vbe_threshold
+        # États du dernier stamp(), relus par get_state() pour rester cohérent
+        self._on = False    # jonction base-émetteur passante
+        self._sat = False   # transistor saturé
 
     def get_nodes(self):
         return [self.node_base, self.node_collector, self.node_emitter]
 
     def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+        idx_b = node_map.get(self.node_base, -1)
         idx_c = node_map.get(self.node_collector, -1)
         idx_e = node_map.get(self.node_emitter, -1)
 
         vbe = prev_state.get("vbe", 0.0)
         vce = prev_state.get("vce", 0.0)
         i_b = prev_state.get("current", 0.0)
+        sat_prev = prev_state.get("saturated", False)
+        ic_prev = prev_state.get("ic", 0.0)
 
         if vbe < self.vbe_threshold:
-            # Bloqué : résistance très grande entre collector et emitter
-            _stamp_conductance(G, idx_c, idx_e, 1e-9)
-        elif vce > self.vce_sat:
-            # Actif : source de courant contrôlée I_C = β * I_B (de collector vers emitter)
-            i_c = self.beta * i_b
-            _stamp_current(b, idx_e, idx_c, i_c)   # I_C entre dans emitter, sort de collector
+            # Bloqué : jonction B-E quasi ouverte, C-E quasi ouvert.
+            self._on = False
+            self._sat = False
+            _stamp_conductance(G, idx_b, idx_e, 1.0 / self.R_BE_OFF)
+            _stamp_conductance(G, idx_c, idx_e, self.R_CE_OFF)
+            return
+
+        # Jonction base-émetteur passante : I_B = (V_BE - vbe_threshold) / R_BE_ON.
+        # Le courant de base traverse donc la résistance de base externe.
+        self._on = True
+        _stamp_conductance(G, idx_b, idx_e, 1.0 / self.R_BE_ON)
+        _stamp_current(b, idx_b, idx_e, self.vbe_threshold / self.R_BE_ON)
+
+        i_c_drive = self.beta * max(i_b, 0.0)
+        # Décision actif/saturé. En saturation V_CE est figé près de vce_sat ; on
+        # ne peut donc pas relire vce pour décider de sortir de saturation. On
+        # compare alors le courant demandé par la base (β·I_B) au courant que le
+        # circuit collecteur fournit réellement (ic_prev) : tant que la base
+        # sur-pilote, on reste saturé ; sinon on repasse en régime actif.
+        if sat_prev:
+            self._sat = i_c_drive >= ic_prev
         else:
-            # Saturé : résistance très faible entre C et E (approximation de Vce_sat)
-            _stamp_conductance(G, idx_c, idx_e, 1e6)
+            self._sat = vce <= self.vce_sat
+
+        if self._sat:
+            # Saturé : V_CE ≈ vce_sat (modèle compagnon résistance + offset)
+            _stamp_conductance(G, idx_c, idx_e, 1.0 / self.R_CE_SAT)
+            _stamp_current(b, idx_c, idx_e, self.vce_sat / self.R_CE_SAT)
+        else:
+            # Actif : source de courant contrôlée I_C = β·I_B (collector → emitter)
+            _stamp_current(b, idx_e, idx_c, i_c_drive)
 
     def get_state(self, x, node_map, branch_map):
         vb = _node_voltage(x, node_map, self.node_base)
@@ -435,9 +473,17 @@ class BJT(Component):
         ve = _node_voltage(x, node_map, self.node_emitter)
         vbe = vb - ve
         vce = vc - ve
-        # Courant de base approximé (résistance base-emitter = 1kΩ par défaut)
-        i_b = vbe / 1000.0 if vbe >= self.vbe_threshold else 0.0
-        return {"voltage": vce, "current": i_b, "vbe": vbe, "vce": vce}
+        # Courant de base cohérent avec l'état réellement stampé (0 si bloqué)
+        i_b = max((vbe - self.vbe_threshold) / self.R_BE_ON, 0.0) if self._on else 0.0
+        # Courant collecteur : mesuré aux bornes en saturation, sinon β·I_B
+        if self._sat:
+            i_c = (vce - self.vce_sat) / self.R_CE_SAT
+        else:
+            i_c = self.beta * i_b
+        return {
+            "voltage": vce, "current": i_b,
+            "vbe": vbe, "vce": vce, "ic": i_c, "saturated": self._sat,
+        }
 
 
 # ── Diode ─────────────────────────────────────────────────────────────────────
