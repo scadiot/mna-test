@@ -142,7 +142,8 @@ class App(tk.Tk):
             comp_id = self._selected_component.id
             comp_state = data["comp_states"].get(comp_id, {})
             history = data["histories"].get(comp_id, [])
-            self._detail.update(comp_state, history)
+            dt = self._circuit.dt if self._circuit else None
+            self._detail.update(comp_state, history, dt)
 
     def _on_close(self):
         """Arrête le moteur si actif, puis ferme la fenêtre."""

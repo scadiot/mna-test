@@ -1,0 +1,41 @@
+{
+  "name": "RC à contacteur — charge à l'appui, décharge en 10 s (τ=2s)",
+  "dt": 1e-3,
+  "components": [
+    {
+      "id": "V1",
+      "type": "voltage_source",
+      "node_pos": "VIN",
+      "node_neg": "GND",
+      "params": { "waveform": "dc", "amplitude": 5.0 }
+    },
+    {
+      "id": "S1",
+      "type": "switch",
+      "node_a": "VIN",
+      "node_b": "CAP",
+      "params": { "closed": false }
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "node_a": "CAP",
+      "node_b": "GND",
+      "params": { "capacitance": 1e-4 }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "node_a": "CAP",
+      "node_b": "GND",
+      "params": { "resistance": 20000.0 }
+    },
+    {
+      "id": "VM",
+      "type": "voltmeter",
+      "node_a": "CAP",
+      "node_b": "GND",
+      "params": { "history_size": 12000 }
+    }
+  ]
+}

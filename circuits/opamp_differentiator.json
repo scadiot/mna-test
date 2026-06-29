@@ -1,0 +1,48 @@
+{
+  "name": "Dérivateur à AOp (sinus 1V/100Hz, RC=1ms)",
+  "dt": 1e-5,
+  "components": [
+    {
+      "id": "V1",
+      "type": "voltage_source",
+      "node_pos": "IN",
+      "node_neg": "GND",
+      "params": { "waveform": "sine", "amplitude": 1.0, "frequency": 100.0 }
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "node_a": "IN",
+      "node_b": "INV",
+      "params": { "capacitance": 1e-7 }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "node_a": "INV",
+      "node_b": "OUT",
+      "params": { "resistance": 10000.0 }
+    },
+    {
+      "id": "OA1",
+      "type": "opamp",
+      "node_plus": "GND",
+      "node_minus": "INV",
+      "node_out": "OUT"
+    },
+    {
+      "id": "VM_in",
+      "type": "voltmeter",
+      "node_a": "IN",
+      "node_b": "GND",
+      "params": { "history_size": 3000 }
+    },
+    {
+      "id": "VM_out",
+      "type": "voltmeter",
+      "node_a": "OUT",
+      "node_b": "GND",
+      "params": { "history_size": 3000 }
+    }
+  ]
+}

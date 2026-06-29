@@ -43,12 +43,18 @@ class ComponentListWidget(tk.Frame):
 
     def update_states(self, comp_states):
         """Rafraîchit les libellés avec l'état courant (tension)."""
+        # La reconstruction des libellés (delete/insert) efface la sélection
+        # de la Listbox : on la mémorise pour la restaurer ensuite.
+        selection = self._listbox.curselection()
         for i, comp in enumerate(self._components):
             state = comp_states.get(comp.id, {})
             v = state.get("voltage", 0.0)
             label = f"{comp.id:<8} {type(comp).__name__:<14} {v:+.3f}V"
             self._listbox.delete(i)
             self._listbox.insert(i, label)
+        # Restaure la sélection bleue perdue lors du delete/insert.
+        for idx in selection:
+            self._listbox.selection_set(idx)
 
     def _on_click(self, event):
         """Appelle le callback avec le composant sélectionné."""

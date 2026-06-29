@@ -136,7 +136,15 @@
       "Bash(python -m pytest tests/ -q)",
       "Bash(python -m pytest tests/test_engine.py -k compute_sleep -v)",
       "Bash(python -c \"from circuit_loader import load_circuit; c = load_circuit\\('circuits/rlc_series.json'\\); print\\('OK:', c.name if hasattr\\(c,'name'\\) else c\\)\")",
-      "Bash(python -c \"from circuit_loader import load_circuit; c=load_circuit\\('circuits/rlc_series.json'\\); print\\(type\\(c\\)\\); print\\([m for m in dir\\(c\\) if not m.startswith\\('_'\\)]\\)\")"
+      "Bash(python -c \"from circuit_loader import load_circuit; c=load_circuit\\('circuits/rlc_series.json'\\); print\\(type\\(c\\)\\); print\\([m for m in dir\\(c\\) if not m.startswith\\('_'\\)]\\)\")",
+      "Bash(cat \"$\\(git rev-parse --show-toplevel\\)/.superpowers/sdd/progress.md\" 2>/dev/null || echo \"NO_LEDGER\"; echo \"---scripts---\"; ls \"C:\\\\Users\\\\basic\\\\.claude\\\\plugins\\\\cache\\\\claude-plugins-official\\\\superpowers\\\\6.0.3\\\\skills\\\\subagent-driven-development\\\\scripts\" 2>/dev/null)",
+      "Bash(python -m pytest tests/test_trigger.py -v)",
+      "Bash(\"C:\\\\Users\\\\basic\\\\.claude\\\\plugins\\\\cache\\\\claude-plugins-official\\\\superpowers\\\\6.0.3\\\\skills\\\\subagent-driven-development\\\\scripts\\\\review-package\" 9b958fc2dad06282b5b3dd7f3fbd5a347eb9d1d6 8997da7)",
+      "Bash(\"C:\\\\Users\\\\basic\\\\.claude\\\\plugins\\\\cache\\\\claude-plugins-official\\\\superpowers\\\\6.0.3\\\\skills\\\\subagent-driven-development\\\\scripts\\\\review-package\" 8997da76fb0eff9717b9eed9ba7ed3b29cce84fc 2fc501f)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(py *)",
+      "Bash(pytest *)"
     ],
     "additionalDirectories": [
       "\\tmp",

@@ -4,6 +4,21 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from ui.trigger import compute_trigger_window
 
 
+def _time_unit(duration):
+    """Choisit une unité de temps lisible pour une durée donnée (en s).
+
+    Renvoie (libellé, facteur) tel que `valeur_en_s * facteur` donne la
+    valeur exprimée dans l'unité retournée.
+    """
+    if duration >= 1.0:
+        return "s", 1.0
+    if duration >= 1e-3:
+        return "ms", 1e3
+    if duration >= 1e-6:
+        return "µs", 1e6
+    return "ns", 1e9
+
+
 class DetailPanelWidget(tk.Frame):
     """
     Panneau droit de l'UI : affiche les paramètres et l'état d'un composant sélectionné.
@@ -96,8 +111,13 @@ class DetailPanelWidget(tk.Frame):
         else:
             self._canvas_widget.pack_forget()
 
-    def update(self, comp_state, history):
-        """Rafraîchit l'état dynamique et le graphique (appelé à 5 Hz)."""
+    def update(self, comp_state, history, dt=None):
+        """Rafraîchit l'état dynamique et le graphique (appelé à 5 Hz).
+
+        `dt` est le pas de temps de simulation (s) ; chaque échantillon de
+        l'historique correspond à un pas. S'il est fourni, l'axe X est tracé
+        en temps, sinon en nombre d'échantillons.
+        """
         if self._current_component is None:
             return
 
@@ -144,12 +164,24 @@ class DetailPanelWidget(tk.Frame):
                 xs = range(n - len(history), n)
                 x_max = n - 1
 
+            # Convertit l'axe X en temps si le pas de simulation est connu :
+            # chaque échantillon = un pas dt. L'unité est choisie selon la
+            # durée totale de la fenêtre affichée.
+            if dt:
+                unit, scale = _time_unit(x_max * dt)
+                factor = dt * scale
+                xs = [x * factor for x in xs]
+                x_max = x_max * factor
+                xlabel = f"Temps ({unit})"
+            else:
+                xlabel = "Échantillons"
+
             self._ax.plot(xs, ys, color="#1f77b4", linewidth=0.8)
             self._ax.axhline(0, color="#888888", linewidth=0.8, linestyle="--")
             self._ax.set_xlim(0, x_max)
             self._ax.set_ylabel("Tension (V)" if "voltmeter" in type(comp).__name__.lower()
                                 else "Courant (A)")
-            self._ax.set_xlabel("Échantillons")
+            self._ax.set_xlabel(xlabel)
             self._ax.grid(True, alpha=0.3)
             # Garantit que la ligne des 0 reste visible
             ymin, ymax = self._ax.get_ylim()
