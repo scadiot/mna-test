@@ -1,5 +1,5 @@
 {
-  "name": "Pont de diodes — redresseur pleine onde (12 V / 50 Hz)",
+  "name": "Pont de diodes — redresseur pleine onde filtré (12 V / 50 Hz)",
   "dt": 0.0001,
   "nodes": [
     {
@@ -96,6 +96,18 @@
       "node_b": "GND",
       "params": {
         "resistance": 1000.0
+      }
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "x": 565.0,
+      "y": 278.0,
+      "rotation": 0,
+      "node_a": "N_out",
+      "node_b": "GND",
+      "params": {
+        "capacitance": 0.001
       }
     },
     {

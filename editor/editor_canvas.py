@@ -330,7 +330,7 @@ class EditorCanvas(tk.Frame):
                 px - PIN_RADIUS, py - PIN_RADIUS,
                 px + PIN_RADIUS, py + PIN_RADIUS,
                 fill=color, outline="#222222",
-                tags=(tag, "pin", pin_tag))
+                tags=(pin_tag, "pin", tag))
 
     def _draw_node(self, node: NodeData):
         tag = f"node_{node.id}"

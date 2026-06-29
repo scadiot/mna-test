@@ -1,0 +1,60 @@
+{
+  "name": "Nouveau circuit",
+  "dt": 1e-05,
+  "nodes": [
+    {
+      "id": "GND",
+      "x": 227.0,
+      "y": 560.0
+    },
+    {
+      "id": "N2",
+      "x": 177.0,
+      "y": 123.0
+    },
+    {
+      "id": "N1",
+      "x": 334.0,
+      "y": 311.0
+    }
+  ],
+  "components": [
+    {
+      "id": "V1",
+      "type": "voltage_source",
+      "x": 71.0,
+      "y": 254.0,
+      "rotation": 0,
+      "node_pos": "N2",
+      "node_neg": "GND",
+      "params": {
+        "waveform": "dc",
+        "amplitude": 5.0
+      }
+    },
+    {
+      "id": "D1",
+      "type": "diode",
+      "x": 319.0,
+      "y": 211.0,
+      "rotation": 90,
+      "node_anode": "N2",
+      "node_cathode": "N1",
+      "params": {
+        "vf": 0.6
+      }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "x": 331.0,
+      "y": 420.0,
+      "rotation": 90,
+      "node_b": "GND",
+      "node_a": "N1",
+      "params": {
+        "resistance": 1000.0
+      }
+    }
+  ]
+}

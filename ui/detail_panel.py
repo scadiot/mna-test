@@ -85,11 +85,23 @@ class DetailPanelWidget(tk.Frame):
 
         # Mise à jour du graphique pour les appareils de mesure
         if comp.records_history and history:
+            n = comp.history_size
+            # Aligne les données sur la droite pour que l'axe X reste fixe pendant le remplissage
+            x_start = n - len(history)
+            xs = range(x_start, n)
             self._ax.clear()
-            self._ax.plot(history, color="#1f77b4", linewidth=0.8)
+            self._ax.plot(xs, history, color="#1f77b4", linewidth=0.8)
+            self._ax.axhline(0, color="#888888", linewidth=0.8, linestyle="--")
+            self._ax.set_xlim(0, n - 1)
             self._ax.set_ylabel("Tension (V)" if "voltmeter" in type(comp).__name__.lower()
                                 else "Courant (A)")
             self._ax.set_xlabel("Échantillons")
             self._ax.grid(True, alpha=0.3)
+            # Garantit que la ligne des 0 reste visible même si toutes les valeurs sont positives
+            ymin, ymax = self._ax.get_ylim()
+            if ymin > 0:
+                self._ax.set_ylim(bottom=0)
+            elif ymax < 0:
+                self._ax.set_ylim(top=0)
             self._fig.tight_layout()
             self._canvas.draw_idle()

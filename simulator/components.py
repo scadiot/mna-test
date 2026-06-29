@@ -465,15 +465,21 @@ class Diode(Component):
         idx_a = node_map.get(self.node_anode,   -1)
         idx_k = node_map.get(self.node_cathode, -1)
         v_prev = prev_state.get("voltage", 0.0)
-        r = self.R_ON if v_prev > self.vf else self.R_OFF
-        _stamp_conductance(G, idx_a, idx_k, 1.0 / r)
+        if v_prev > self.vf:
+            # Passante : V_AK = vf + R_ON*I  →  conductance + source de courant offset
+            # Sans l'offset vf, le modèle oscille : V_AK calculé ≈ 0 < vf → coupe à l'étape suivante
+            _stamp_conductance(G, idx_a, idx_k, 1.0 / self.R_ON)
+            _stamp_current(b, idx_a, idx_k, self.vf / self.R_ON)
+        else:
+            _stamp_conductance(G, idx_a, idx_k, 1.0 / self.R_OFF)
 
     def get_state(self, x, node_map, branch_map):
         va = _node_voltage(x, node_map, self.node_anode)
         vk = _node_voltage(x, node_map, self.node_cathode)
         voltage = va - vk
-        r = self.R_ON if voltage > self.vf else self.R_OFF
-        return {"voltage": voltage, "current": voltage / r}
+        if voltage > self.vf:
+            return {"voltage": voltage, "current": (voltage - self.vf) / self.R_ON}
+        return {"voltage": voltage, "current": voltage / self.R_OFF}
 
 
 # ── Amplificateur opérationnel idéal ──────────────────────────────────────────

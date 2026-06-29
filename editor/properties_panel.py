@@ -17,7 +17,7 @@ class PropertiesPanel(tk.Frame):
         self.show_empty()
 
     def _clear(self):
-        for w in self._widgets:
+        for w in self._body.winfo_children():
             w.destroy()
         self._widgets = []
         self._err_label = None
