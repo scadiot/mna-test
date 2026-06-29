@@ -184,6 +184,8 @@ class EditorCanvas(tk.Frame):
                 self.canvas.delete(self._connect_line)
             src_comp_id, pin_name = self._connect_source
             comp = self.model.get_component(src_comp_id)
+            if comp is None:
+                return
             template = COMPONENT_TEMPLATES.get(comp.type, {})
             pin = next((p for p in template.get("pins", []) if p.name == pin_name), None)
             if pin:
@@ -194,8 +196,12 @@ class EditorCanvas(tk.Frame):
 
     def _on_release(self, event):
         if self._state == "DRAGGING":
-            self._state = "SELECTED"
+            self._state = "IDLE"
+            self._selected_comp = None
+            self._selected_node = None
+            self._selected_wire = None
             self._notify_model()
+            self.redraw()
 
         elif self._state == "CONNECTING":
             if self._connect_line:
@@ -227,6 +233,7 @@ class EditorCanvas(tk.Frame):
         if self._selected_comp:
             self.model.remove_component(self._selected_comp)
             self._selected_comp = None
+            self._state = "IDLE"
             self.redraw()
             self._notify_model()
             self._notify_selection()
@@ -250,6 +257,7 @@ class EditorCanvas(tk.Frame):
                     return
             self.model.remove_node(node_id)
             self._selected_node = None
+            self._state = "IDLE"
             self.redraw()
             self._notify_model()
             self._notify_selection()
@@ -258,6 +266,7 @@ class EditorCanvas(tk.Frame):
             comp_id, pin_name = self._selected_wire
             self.model.disconnect_pin(comp_id, pin_name)
             self._selected_wire = None
+            self._state = "IDLE"
             self.redraw()
             self._notify_model()
             self._notify_selection()
