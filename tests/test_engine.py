@@ -25,20 +25,21 @@ def _make_rc_circuit():
 
 
 def test_rc_charges_to_source_voltage():
-    """Après 5τ (5ms), le condensateur doit être chargé à ~99% de 5V."""
+    """Après 15τ (1500 pas à dt=1e-5), le condensateur doit être chargé à ~5V.
+
+    Avance la simulation pas à pas de façon déterministe (comme _settle) plutôt
+    que via le temps mural : depuis l'introduction du throttle CPU, le temps
+    simulé n'avance plus à la vitesse du temps réel, donc un sleep() mural ne
+    garantit pas un nombre de pas fixe. La physique testée est indépendante de
+    l'ordonnancement temps réel.
+    """
     circuit = _make_rc_circuit()
     state = SharedState()
-    for comp_id, hist_size in circuit.histories.items():
-        state.init_histories([comp_id], hist_size)
-
     engine = SimulationEngine(circuit, state)
-    engine.start()
-    time.sleep(0.015)   # attend 15ms = 15τ pour être sûr
-    engine.stop()
+    for k in range(1500):   # 1500 × 1e-5 s = 15 ms = 15τ
+        engine._step(k * circuit.dt)
 
-    data = state.read()
-    v_cap = data["comp_states"].get("C1", {}).get("voltage", None)
-    assert v_cap is not None
+    v_cap = engine._prev_states["C1"]["voltage"]
     assert v_cap == pytest.approx(5.0, abs=0.1)   # chargé à 5V ± 0.1V
 
 

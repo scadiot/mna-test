@@ -129,8 +129,9 @@ class SimulationEngine:
         with self._state._lock:
             self._state.running = True
 
-        # Temps de référence pour synchroniser la simulation avec le temps réel
-        t_real_start = time.monotonic()
+        # Échéance temps réel glissante : ré-ancrée quand le moteur prend du
+        # retard (cf. _compute_sleep) pour ne jamais saturer un cœur CPU.
+        next_deadline = time.monotonic() + self._dt
 
         while True:
             # Vérifie si l'arrêt a été demandé
@@ -138,19 +139,19 @@ class SimulationEngine:
                 if not self._state.running:
                     break
 
+            step_start = time.monotonic()
             ok = self._step(t)
             if not ok:
                 break   # erreur MNA → arrêt propre
+            step_duration = time.monotonic() - step_start
 
             t += self._dt
 
-            # Calcule le décalage entre temps simulé et temps réel écoulé
-            # Si on est en avance, on dort ; si on est en retard, on continue
-            t_real_elapsed = time.monotonic() - t_real_start
-            t_ahead = t - t_real_elapsed
-            if t_ahead > 1e-4:
-                # On est en avance de plus de 100µs : on dort un peu
-                time.sleep(t_ahead)
+            sleep_s, next_deadline = _compute_sleep(
+                step_duration, time.monotonic(), next_deadline, self._dt
+            )
+            if sleep_s > 0:
+                time.sleep(sleep_s)
 
     def start(self):
         """Démarre la simulation dans un thread daemon."""
