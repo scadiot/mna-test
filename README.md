@@ -33,7 +33,13 @@ python main.py
 1. Cliquer sur **"Ouvrir circuit..."** et choisir un fichier `.json` (dossier `circuits/`)
 2. Cliquer sur **"▶ Démarrer"** pour lancer la simulation
 3. Cliquer sur un composant dans la liste pour voir ses paramètres et son état en temps réel
-4. Les voltmètres et ampèremètres affichent un graphique d'historique
+4. Les voltmètres et ampèremètres affichent un graphique d'historique. Une case
+   **« Déclenchement »** (cochée par défaut) stabilise la trace des signaux
+   périodiques en la ré-ancrant sur un front montant (comme un oscilloscope).
+   Pour qu'il soit efficace, `history_size` doit valoir au moins ~2× la durée
+   d'affichage souhaitée (afin de laisser une marge de recherche de front) :
+   à `dt = 1e-5` et 100 Hz (1000 échantillons/période), `history_size = 3000`
+   capture ~3 périodes.
 5. Un interrupteur (`switch`) affiche un bouton **Toggle** pour l'ouvrir/fermer pendant la simulation
 6. Cliquer sur **"⏹ Arrêter"** pour stopper
 

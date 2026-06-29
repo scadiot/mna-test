@@ -1,6 +1,7 @@
 import tkinter as tk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from ui.trigger import compute_trigger_window
 
 
 class DetailPanelWidget(tk.Frame):
@@ -32,6 +33,10 @@ class DetailPanelWidget(tk.Frame):
         self._ratio_slider = None
         self._ratio_label = None
 
+        # Case à cocher de déclenchement (créée pour les appareils de mesure)
+        self._trigger_chk = None
+        self._trigger_var = tk.BooleanVar(value=True)
+
     def show_component(self, component):
         """Affiche les informations statiques d'un composant (appel au clic)."""
         self._current_component = component
@@ -48,6 +53,10 @@ class DetailPanelWidget(tk.Frame):
         if self._ratio_slider:
             self._ratio_slider.destroy()
             self._ratio_slider = None
+
+        if self._trigger_chk:
+            self._trigger_chk.destroy()
+            self._trigger_chk = None
 
         # Affiche les paramètres JSON du composant
         lines = [f"ID      : {component.id}",
@@ -77,8 +86,12 @@ class DetailPanelWidget(tk.Frame):
             self._ratio_slider.set(component.ratio)
             self._ratio_slider.pack(pady=5)
 
-        # Affiche ou masque le graphique
+        # Graphique et case de déclenchement pour les appareils de mesure
         if component.records_history:
+            self._trigger_chk = tk.Checkbutton(
+                self, text="Déclenchement", variable=self._trigger_var
+            )
+            self._trigger_chk.pack()
             self._canvas_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         else:
             self._canvas_widget.pack_forget()
@@ -105,19 +118,40 @@ class DetailPanelWidget(tk.Frame):
 
         # Mise à jour du graphique pour les appareils de mesure
         if comp.records_history and history:
-            n = comp.history_size
-            # Aligne les données sur la droite pour que l'axe X reste fixe pendant le remplissage
-            x_start = n - len(history)
-            xs = range(x_start, n)
             self._ax.clear()
-            self._ax.plot(xs, history, color="#1f77b4", linewidth=0.8)
+
+            if self._trigger_var.get():
+                # Fenêtre déclenchée : moitié du buffer affichée, moitié réservée
+                # à la recherche de front. Axe X figé à 0..width-1.
+                width = len(history) // 2 or len(history)
+                level = sum(history) / len(history)
+                win = compute_trigger_window(history, width, level)
+                if win is not None:
+                    start, end = win
+                    ys = history[start:end]
+                    xs = range(len(ys))
+                else:
+                    # Repli : derniers échantillons alignés à droite
+                    ys = history[-width:]
+                    xs = range(width - len(ys), width)
+                # max(..., 1) évite un axe de largeur nulle au tout début du
+                # remplissage (width == 1), qui ferait râler matplotlib.
+                x_max = max(width - 1, 1)
+            else:
+                # Comportement historique : tout le buffer aligné à droite
+                n = comp.history_size
+                ys = history
+                xs = range(n - len(history), n)
+                x_max = n - 1
+
+            self._ax.plot(xs, ys, color="#1f77b4", linewidth=0.8)
             self._ax.axhline(0, color="#888888", linewidth=0.8, linestyle="--")
-            self._ax.set_xlim(0, n - 1)
+            self._ax.set_xlim(0, x_max)
             self._ax.set_ylabel("Tension (V)" if "voltmeter" in type(comp).__name__.lower()
                                 else "Courant (A)")
             self._ax.set_xlabel("Échantillons")
             self._ax.grid(True, alpha=0.3)
-            # Garantit que la ligne des 0 reste visible même si toutes les valeurs sont positives
+            # Garantit que la ligne des 0 reste visible
             ymin, ymax = self._ax.get_ylim()
             if ymin > 0:
                 self._ax.set_ylim(bottom=0)
