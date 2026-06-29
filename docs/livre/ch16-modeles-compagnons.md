@@ -41,7 +41,7 @@ Deux lignes, deux vieilles connaissances : `_stamp_conductance` (la part « rés
 
 ## 16.3 La bobine tamponnée
 
-La bobine suit la même logique, avec sa propre équation (`i(t) = g_eq·v(t) + i_prev`, `g_eq = dt/L`). Cette fois, le terme mémoire est un **courant** précédent ([components.py](../../simulator/components.py#L165-L173)) :
+La bobine suit la même logique, avec sa propre équation (`i(t) = g_eq·v(t) + i_prev`, `g_eq = dt/L`). Cette fois, le terme mémoire est un **courant** précédent ([components.py](../../simulator/components.py#L165-L174)) :
 
 ```python
 def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
@@ -51,11 +51,14 @@ def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
     i_prev = prev_state.get("current", 0.0)
     # Conductance compagnon
     _stamp_conductance(G, idx_a, idx_b, g_eq)
-    # Source de courant compagnon : injecte i_prev de idx_b vers idx_a
-    _stamp_current(b, idx_a, idx_b, i_prev)
+    # Source de courant compagnon : le courant de branche i(t)=g_eq*v(t)+i_prev
+    # circule de idx_a vers idx_b, donc i_prev quitte idx_a (injection négative).
+    _stamp_current(b, idx_a, idx_b, -i_prev)
 ```
 
 Rigoureusement la même structure. Seules changent la formule de `g_eq` et la grandeur mémorisée (`current` au lieu de `voltage`). La dualité condensateur/bobine, annoncée au chapitre 14, se lit jusque dans le code.
+
+Un détail de **signe** mérite l'attention. Pour le condensateur, le terme mémoire `g_eq·v_prev` est injecté tel quel ; pour la bobine, c'est `−i_prev`. La raison tient à la **convention d'orientation** : on choisit que le courant de branche `i(t) = g_eq·v(t) + i_prev` circule de `idx_a` vers `idx_b`. Le terme constant `i_prev` *quitte* donc `idx_a`, ce qui se traduit par une injection **négative** dans `b` du côté `idx_a` (`_stamp_current(b, idx_a, idx_b, -i_prev)`). Se tromper de signe ici inverserait le sens du courant mémorisé et ferait diverger la dynamique de la bobine — un bug subtil, car la conductance compagnon, elle, resterait correcte.
 
 ## 16.4 La boucle de la mémoire
 
@@ -135,7 +138,7 @@ Vous tenez là, en quelques lignes d'arithmétique, l'essence même de la simula
 
 - Le **modèle compagnon** déguise, à chaque pas, un composant réactif en **une conductance `g_eq` en parallèle avec une source de courant** — deux briques connues depuis le chapitre 6.
 - Condensateur : `g_eq = C/dt`, source compagnon `g_eq·v_prev` (mémoire = **tension** précédente).
-  Bobine : `g_eq = dt/L`, source compagnon `i_prev` (mémoire = **courant** précédent).
+  Bobine : `g_eq = dt/L`, source compagnon `−i_prev` (mémoire = **courant** précédent ; le signe négatif suit la convention d'orientation de la branche).
 - La **mémoire** est entretenue par `self._prev_states = comp_states` en fin de pas. Cycle : lire `prev_state` → résoudre → enregistrer le nouvel état.
 - Le **courant** d'un composant réactif est recalculé *après* la résolution, car il dépend de deux instants (la passe dédiée dans `engine.py`).
 - Un exemple **RC** montre la charge exponentielle émerger naturellement, fidèle à `1 − e^{−t/RC}`, et **stable** grâce à Euler implicite.

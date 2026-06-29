@@ -44,16 +44,31 @@ La meilleure preuve que vous avez compris l'architecture est de l'**étendre**. 
 
 Et c'est tout. Le moteur, l'état partagé, la boucle temps réel : **rien d'autre ne change**. Votre composant sera tamponné, résolu, mémorisé et publié comme les autres, gratuitement. C'est la marque d'une architecture bien pensée — *ouverte à l'extension, fermée à la modification*.
 
-## 24.4 Une idée concrète : le potentiomètre
+## 24.4 Un cas concret, désormais implémenté : le potentiomètre
 
-Pour rendre l'exercice tangible, prenons un cas réel — d'autant que le dépôt en contient justement les prémices (une spécification de *potentiomètre*). Un potentiomètre est une **résistance variable** : une résistance dont la valeur se règle, typiquement par un curseur entre 0 et une valeur maximale.
+Pour rendre l'exercice tangible, prenons un cas réel — et qui n'a plus rien d'hypothétique, car le dépôt l'**implémente** désormais dans `simulator/components.py`. Un potentiomètre est une **résistance variable à trois broches** : deux extrémités (`a` et `b`) et un **curseur** (`wiper`) qui se déplace le long de la piste résistive. Le curseur partage la résistance totale `R` en deux : une fraction `ratio·R` du côté `a`, et le reste `(1−ratio)·R` du côté `b`.
 
-Sa conception découle directement de ce que vous savez :
+Sa conception découle directement de ce que vous savez. Plutôt qu'une seule résistance variable, on le modélise comme **deux conductances en série** autour du nœud curseur ([components.py](../../simulator/components.py#L602-L610)) :
 
-- C'est, au fond, une **résistance** (chapitre 9) — donc `stamp` tamponne une simple conductance `1/R`.
-- Sa valeur `R` dépend d'un paramètre réglable (la position du curseur), modifiable **en temps réel** — exactement comme l'interrupteur expose `toggle()` (chapitre 13). On ajouterait une méthode `set_position(x)` qui met à jour `R`, et le pas suivant tamponnerait la nouvelle valeur, sans aucun autre changement.
+```python
+def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
+    idx_a = node_map.get(self.node_a, -1)
+    idx_w = node_map.get(self.node_wiper, -1)
+    idx_b = node_map.get(self.node_b, -1)
+    ratio_clamped = max(0.01, min(0.99, self.ratio))
+    g1 = 1.0 / (ratio_clamped * self.resistance)        # entre a et wiper
+    g2 = 1.0 / ((1.0 - ratio_clamped) * self.resistance)  # entre wiper et b
+    _stamp_conductance(G, idx_a, idx_w, g1)
+    _stamp_conductance(G, idx_w, idx_b, g2)
+```
 
-Vous voyez comme deux composants déjà étudiés — la résistance pour le *quoi*, l'interrupteur pour le *réglage en temps réel* — se combinent pour en former un troisième. C'est ainsi que se construit, par recomposition, tout un catalogue. Le potentiomètre câblé en **diviseur** (chapitre 9) donnerait même une tension de sortie réglable : un volume, une luminosité, une consigne.
+Tout vous est familier :
+
+- Chaque demi-piste est une **résistance** (chapitre 9) — donc deux appels à `_stamp_conductance`, rien de plus. Le composant à trois broches n'est qu'un assemblage de deux briques du chapitre 6.
+- Le `ratio` est **clampé à `[0.01, 0.99]`** : un curseur exactement en butée donnerait `1/(0·R)`, une division par zéro et une conductance infinie. Borner les extrêmes est le réflexe défensif déjà rencontré pour les conductances « interrupteur ouvert ».
+- Le ratio est modifiable **en temps réel** — exactement comme l'interrupteur expose `toggle()` (chapitre 13). Une méthode `set_ratio(value)` met à jour le paramètre, et le pas suivant tamponne la nouvelle répartition, sans aucun autre changement.
+
+Câblé ainsi, le potentiomètre **est** un diviseur de tension (chapitre 9) : la tension au curseur sort à `V_a + ratio·(V_b − V_a)`, une consigne réglable à la volée — un volume, une luminosité, un gain. Vous voyez comme deux composants déjà étudiés — la résistance pour le *quoi*, l'interrupteur pour le *réglage en temps réel* — se combinent pour en former un troisième. C'est ainsi que se construit, par recomposition, tout un catalogue.
 
 ## 24.5 Pour aller plus loin
 
@@ -80,7 +95,7 @@ Cette démarche dépasse de loin les circuits. C'est l'essence de toute simulati
 - Le simulateur excelle par sa **lisibilité** et son fonctionnement **temps réel** ; il n'est pas un outil de conception **professionnel**.
 - Ses **limites assumées** : pas d'itération Newton-Raphson, intégration du 1er ordre, modèles idéalisés, pas d'analyse AC/point de fonctionnement, matrice dense non optimisée.
 - **Étendre** le simulateur ne touche que **deux endroits** : la classe du composant (`stamp`, `get_state`, `get_nodes`, `needs_branch`) et la fabrique du chargeur. Le reste fonctionne **gratuitement** — architecture *ouverte à l'extension, fermée à la modification*.
-- Exemple concret : le **potentiomètre** = une résistance (chapitre 9) + un réglage temps réel (chapitre 13).
+- Exemple concret **déjà implémenté** : le **potentiomètre** (3 broches) = deux conductances en série autour du curseur (chapitre 9) + un réglage temps réel `set_ratio()` (chapitre 13), avec un ratio clampé pour éviter la division par zéro aux butées.
 - La leçon centrale du livre : *un simulateur traduit la physique en algèbre*. Cette démarche de décomposition dépasse l'électronique.
 
 **Fin.** Les annexes qui suivent rassemblent les rappels mathématiques, les unités, le formulaire de stamping et le glossaire — vos compagnons de relecture.

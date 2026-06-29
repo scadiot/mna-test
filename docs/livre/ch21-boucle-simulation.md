@@ -52,7 +52,7 @@ Le `return False` en cas d'erreur est important : il signale à la boucle qu'il 
 
 ## 21.3 Enchaîner les pas : `_run_loop`
 
-Un pas calcule un instant `t`. Pour simuler la durée, il faut les enchaîner en incrémentant `t` de `dt` à chaque tour. C'est le rôle de `_run_loop` ([simulator/engine.py](../../simulator/engine.py#L98-L125)) :
+Un pas calcule un instant `t`. Pour simuler la durée, il faut les enchaîner en incrémentant `t` de `dt` à chaque tour. C'est le rôle de `_run_loop` ([simulator/engine.py](../../simulator/engine.py#L126-L154)) :
 
 ```python
 def _run_loop(self):
@@ -60,27 +60,31 @@ def _run_loop(self):
     with self._state._lock:
         self._state.running = True
 
-    t_real_start = time.monotonic()        # temps de référence
+    # échéance temps réel glissante, ré-ancrée en cas de retard (§21.4)
+    next_deadline = time.monotonic() + self._dt
 
     while True:
         with self._state._lock:
             if not self._state.running:    # arrêt demandé ?
                 break
 
+        step_start = time.monotonic()
         ok = self._step(t)
         if not ok:
             break                          # erreur MNA → arrêt propre
+        step_duration = time.monotonic() - step_start
 
         t += self._dt
 
-        # synchronisation avec le temps réel (voir §21.4)
-        t_real_elapsed = time.monotonic() - t_real_start
-        t_ahead = t - t_real_elapsed
-        if t_ahead > 1e-4:
-            time.sleep(t_ahead)
+        # combien dormir ? (calcul délégué à une fonction pure, voir §21.4)
+        sleep_s, next_deadline = _compute_sleep(
+            step_duration, time.monotonic(), next_deadline, self._dt
+        )
+        if sleep_s > 0:
+            time.sleep(sleep_s)
 ```
 
-La structure est une boucle « tant que ça tourne » : on vérifie le drapeau `running` (qui peut être abaissé de l'extérieur, chapitre 13), on exécute un pas, on avance le temps simulé, puis on se synchronise. Si un pas échoue (`ok` faux), on sort proprement.
+La structure est une boucle « tant que ça tourne » : on vérifie le drapeau `running` (qui peut être abaissé de l'extérieur, chapitre 13), on **chronomètre** puis on exécute un pas, on avance le temps simulé, puis on se synchronise. Si un pas échoue (`ok` faux), on sort proprement.
 
 ## 21.4 Le temps simulé contre le temps réel
 
@@ -91,15 +95,29 @@ Voici la partie la plus astucieuse, et la raison d'être d'un simulateur *temps 
 
 L'objectif est que les deux **coïncident** : une seconde simulée doit s'écouler en une seconde réelle, pour qu'un signal de `50 Hz` clignote effectivement 50 fois par seconde à l'écran. Or l'ordinateur calcule chaque pas bien plus vite que `dt`. Sans précaution, il « foncerait » : mille pas en un clin d'œil, et le temps simulé s'envolerait.
 
-La parade est ce petit calcul de fin de boucle :
+La décision « combien de temps dormir ? » est isolée dans une **fonction pure** — sans état ni effet de bord, donc testable sans lancer aucun thread ([simulator/engine.py](../../simulator/engine.py#L14-L33)) :
 
 ```python
-t_ahead = t - t_real_elapsed     # de combien le simulé est-il en avance ?
-if t_ahead > 1e-4:
-    time.sleep(t_ahead)          # on patiente pour laisser le réel rattraper
+THROTTLE_RATIO = 1.0   # plafonne l'occupation CPU à 1/(1+ratio) ≈ 50 % d'un cœur
+
+def _compute_sleep(step_duration, now, next_deadline, dt):
+    slack = next_deadline - now
+    if slack > 0:
+        # en avance : on dort le temps restant, l'échéance avance de dt
+        return slack, next_deadline + dt
+    # en retard : on ne spinne pas. On dort proportionnellement au coût du
+    # pas (throttle) et on ré-ancre l'échéance sur « now » pour ne pas
+    # accumuler de dette → ralenti à CPU borné.
+    return step_duration * THROTTLE_RATIO, now + dt
 ```
 
-Si le temps simulé a pris de l'avance sur le temps réel (le cas normal, car le calcul est rapide), on **dort** juste ce qu'il faut pour que le réel rattrape. Le `1e-4` (100 µs) est une marge : inutile de dormir pour des écarts infimes. Résultat : la simulation **se cale sur l'horloge murale**. Si, à l'inverse, les calculs étaient trop lents (`t_ahead` négatif), on ne dort pas et on enchaîne au plus vite — la simulation ralentirait alors par rapport au réel, mais sans jamais se figer.
+On y reconnaît une **échéance glissante** `next_deadline`, l'instant réel visé pour le pas courant. Deux cas se présentent :
+
+- **En avance** (`slack > 0`, le cas normal car le calcul est rapide) : on **dort** le temps restant jusqu'à l'échéance, puis on avance celle-ci de `dt`. La simulation se **cale sur l'horloge murale** — c'est ce qui la rend « temps réel ».
+
+- **En retard** (`slack ≤ 0`, circuit lourd ou machine chargée) : naïvement, on serait tenté de ne pas dormir du tout et d'enchaîner au plus vite. **C'est exactement le piège** : sans aucune pause, la boucle **sature un cœur CPU à 100 %** pour rien, puisqu'elle ne pourra de toute façon pas rattraper le temps réel. La parade est de dormir une durée **proportionnelle au coût du pas** (`step_duration * THROTTLE_RATIO`) : avec `THROTTLE_RATIO = 1.0`, on passe autant de temps à dormir qu'à calculer, ce qui **borne l'occupation à ~50 % d'un cœur**. On ré-ancre alors l'échéance sur `now` pour ne pas accumuler une dette de retard impossible à combler. La simulation tourne au **ralenti**, mais sans jamais faire chauffer le processeur ni se figer.
+
+Le découpage en fonction pure n'est pas un caprice : il rend ce calcul délicat **vérifiable par de simples tests unitaires** (on lui passe des valeurs et on inspecte le `(sleep, deadline)` retourné), sans avoir à orchestrer de threads ni à mesurer du temps réel.
 
 ## 21.5 Un fil d'exécution dédié
 
@@ -128,6 +146,7 @@ Le fait que la simulation tourne dans son propre fil, pendant que l'utilisateur 
 - Le moteur s'articule en deux méthodes : **`_step`** (calcule un instant) et **`_run_loop`** (enchaîne les instants).
 - Un **pas** suit toujours les quatre temps : **assembler** (stamping, lecture de `prev_state`) → **résoudre** (`np.linalg.solve` + rattrapage singulier) → **extraire** (tensions, états) → **mémoriser & publier**.
 - Deux horloges coexistent : le **temps simulé** `t` (par bonds de `dt`) et le **temps réel** (`time.monotonic`). La boucle **dort** (`time.sleep`) pour les caler l'une sur l'autre — c'est ce qui rend la simulation « temps réel ».
+- Le calcul du sommeil est délégué à une **fonction pure** `_compute_sleep` (testable sans thread). En avance, on dort le *slack* jusqu'à l'échéance ; **en retard, on dort quand même** une fraction proportionnelle au coût du pas (`THROTTLE_RATIO`) pour **borner l'occupation CPU** (~50 % d'un cœur) au lieu de saturer un cœur à 100 % en pure perte.
 - La boucle tourne dans un **thread démon** (`daemon=True`), lancé par `start` et arrêté **coopérativement** par `stop` (drapeau `running` puis `join`).
 
 **Dans le prochain chapitre**, nous remonterons en amont du moteur : d'où vient le circuit ? Nous verrons comment un simple fichier **JSON** se transforme en une liste d'objets composants prêts à être simulés.
