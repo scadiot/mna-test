@@ -15,12 +15,12 @@ COMPONENT_TEMPLATES: dict[str, dict] = {
     "inductor":       {"pins": [Pin("node_a", "A", (-50, 0)), Pin("node_b", "B", (50, 0))],        "params": {"inductance": 0.01}},
     "switch":         {"pins": [Pin("node_a", "A", (-50, 0)), Pin("node_b", "B", (50, 0))],        "params": {"closed": False}},
     "voltage_source": {"pins": [Pin("node_pos", "+", (0, -50)), Pin("node_neg", "−", (0, 50))],    "params": {"waveform": "dc", "amplitude": 5.0}},
-    "current_source": {"pins": [Pin("node_pos", "+", (0, -50)), Pin("node_neg", "−", (0, 50))],    "params": {"waveform": "dc", "amplitude": 0.001}},
+    "current_source": {"pins": [Pin("node_a", "+", (0, -50)), Pin("node_b", "−", (0, 50))],    "params": {"waveform": "dc", "amplitude": 0.001}},
     "voltmeter":      {"pins": [Pin("node_a", "A", (-50, 0)), Pin("node_b", "B", (50, 0))],        "params": {"history_size": 500}},
     "ammeter":        {"pins": [Pin("node_a", "A", (-50, 0)), Pin("node_b", "B", (50, 0))],        "params": {"history_size": 500}},
     "transistor_bjt": {"pins": [Pin("node_base", "B", (-50, 0)), Pin("node_collector", "C", (0, -50)), Pin("node_emitter", "E", (0, 50))], "params": {"beta": 100, "vce_sat": 0.2}},
     "opamp":          {"pins": [Pin("node_plus", "IN+", (-50, -25)), Pin("node_minus", "IN−", (-50, 25)), Pin("node_out", "OUT", (50, 0))], "params": {}},
-    "diode":          {"pins": [Pin("node_a", "A", (-50, 0)), Pin("node_k", "K", (50, 0))],        "params": {"is": 1e-12, "n": 1.0}},
+    "diode":          {"pins": [Pin("node_anode", "A", (-50, 0)), Pin("node_cathode", "K", (50, 0))],        "params": {"vf": 0.6}},
 }
 
 

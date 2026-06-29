@@ -1,6 +1,5 @@
 from __future__ import annotations
 import json
-import math
 from editor.circuit_model import CircuitModel, ComponentData, NodeData
 
 PIN_KEYS = {
@@ -9,12 +8,12 @@ PIN_KEYS = {
     "inductor": ["node_a", "node_b"],
     "switch": ["node_a", "node_b"],
     "voltage_source": ["node_pos", "node_neg"],
-    "current_source": ["node_pos", "node_neg"],
+    "current_source": ["node_a", "node_b"],
     "voltmeter": ["node_a", "node_b"],
     "ammeter": ["node_a", "node_b"],
     "transistor_bjt": ["node_base", "node_collector", "node_emitter"],
     "opamp": ["node_plus", "node_minus", "node_out"],
-    "diode": ["node_a", "node_k"],
+    "diode": ["node_anode", "node_cathode"],
 }
 
 def load_circuit(path: str) -> CircuitModel:
