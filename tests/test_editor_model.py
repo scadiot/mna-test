@@ -88,3 +88,7 @@ def test_is_dirty():
     assert m.is_dirty is True
     m.mark_clean()
     assert m.is_dirty is False
+
+def test_next_id_potentiometer():
+    m = CircuitModel()
+    assert m.next_id("potentiometer") == "POT1"

@@ -5,7 +5,7 @@ TYPE_PREFIX = {
     "resistor": "R", "capacitor": "C", "inductor": "L",
     "switch": "SW", "voltage_source": "V", "current_source": "I",
     "voltmeter": "VM", "ammeter": "AM", "transistor_bjt": "Q",
-    "opamp": "U", "diode": "D",
+    "opamp": "U", "diode": "D", "potentiometer": "POT",
 }
 
 @dataclass

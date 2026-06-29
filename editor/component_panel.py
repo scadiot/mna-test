@@ -6,7 +6,7 @@ COMPONENT_TYPES = [
     "resistor", "capacitor", "inductor", "switch",
     "voltage_source", "current_source",
     "voltmeter", "ammeter",
-    "transistor_bjt", "opamp", "diode",
+    "transistor_bjt", "opamp", "diode", "potentiometer",
 ]
 
 

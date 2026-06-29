@@ -21,6 +21,7 @@ COMPONENT_TEMPLATES: dict[str, dict] = {
     "transistor_bjt": {"pins": [Pin("node_base", "B", (-50, 0)), Pin("node_collector", "C", (0, -50)), Pin("node_emitter", "E", (0, 50))], "params": {"beta": 100, "vce_sat": 0.2}},
     "opamp":          {"pins": [Pin("node_plus", "IN+", (-50, -25)), Pin("node_minus", "IN−", (-50, 25)), Pin("node_out", "OUT", (50, 0))], "params": {}},
     "diode":          {"pins": [Pin("node_anode", "A", (-50, 0)), Pin("node_cathode", "K", (50, 0))],        "params": {"vf": 0.6}},
+    "potentiometer":  {"pins": [Pin("node_a", "A", (0, -50)), Pin("node_wiper", "W", (50, 0)), Pin("node_b", "B", (0, 50))], "params": {"resistance": 1000.0, "ratio": 0.5}},
 }
 
 
