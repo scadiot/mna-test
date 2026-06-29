@@ -14,6 +14,7 @@ PIN_KEYS = {
     "transistor_bjt": ["node_base", "node_collector", "node_emitter"],
     "opamp": ["node_plus", "node_minus", "node_out"],
     "diode": ["node_anode", "node_cathode"],
+    "potentiometer": ["node_a", "node_wiper", "node_b"],
 }
 
 def load_circuit(path: str) -> CircuitModel:

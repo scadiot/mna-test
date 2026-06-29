@@ -84,3 +84,31 @@ def test_load_invalid_json(tmp_path):
     p.write_text("{ invalid json }")
     with pytest.raises(Exception):
         load_circuit(str(p))
+
+def test_potentiometer_round_trip(tmp_path):
+    """Test that potentiometer pin connections are saved and restored correctly."""
+    m = CircuitModel()
+    m.name = "PotTest"
+    m.dt = 1e-5
+    # Add nodes
+    m.add_node(NodeData(id="N_A", x=100.0, y=200.0, is_gnd=False))
+    m.add_node(NodeData(id="N_W", x=150.0, y=200.0, is_gnd=False))
+    m.add_node(NodeData(id="N_B", x=200.0, y=200.0, is_gnd=False))
+    # Add potentiometer with all three pin connections
+    m.add_component(ComponentData(id="POT1", type="potentiometer",
+                                   x=150.0, y=150.0, rotation=0,
+                                   params={"resistance": 10000.0, "ratio": 0.5},
+                                   pin_connections={"node_a": "N_A", "node_wiper": "N_W", "node_b": "N_B"}))
+    # Save and reload
+    out = str(tmp_path / "pot.json")
+    save_circuit(m, out)
+    m2 = load_circuit(out)
+    # Verify potentiometer was loaded with all connections restored
+    assert m2.name == "PotTest"
+    assert len(m2.components) == 1
+    pot = m2.components[0]
+    assert pot.id == "POT1"
+    assert pot.type == "potentiometer"
+    assert pot.pin_connections["node_a"] == "N_A"
+    assert pot.pin_connections["node_wiper"] == "N_W"
+    assert pot.pin_connections["node_b"] == "N_B"

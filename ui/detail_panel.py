@@ -30,6 +30,7 @@ class DetailPanelWidget(tk.Frame):
         # Bouton toggle pour les interrupteurs
         self._toggle_btn = None
         self._ratio_slider = None
+        self._ratio_label = None
 
     def show_component(self, component):
         """Affiche les informations statiques d'un composant (appel au clic)."""
@@ -39,6 +40,10 @@ class DetailPanelWidget(tk.Frame):
         if self._toggle_btn:
             self._toggle_btn.destroy()
             self._toggle_btn = None
+
+        if self._ratio_label:
+            self._ratio_label.destroy()
+            self._ratio_label = None
 
         if self._ratio_slider:
             self._ratio_slider.destroy()
@@ -62,7 +67,8 @@ class DetailPanelWidget(tk.Frame):
             )
             self._toggle_btn.pack(pady=5)
         elif isinstance(component, Potentiometer):
-            tk.Label(self, text="Ratio curseur :").pack()
+            self._ratio_label = tk.Label(self, text="Ratio curseur :")
+            self._ratio_label.pack()
             self._ratio_slider = tk.Scale(
                 self, from_=0.0, to=1.0, resolution=0.01,
                 orient=tk.HORIZONTAL, length=200,
