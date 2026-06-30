@@ -82,6 +82,12 @@ class Component:
     def history_size(self):
         return int(self.params.get("history_size", 500))
 
+    @property
+    def is_nonlinear(self):
+        """True pour les composants dont l'état dépend de la solution du pas
+        courant (itérés par le moteur dans la boucle de convergence intra-pas)."""
+        return False
+
 
 # ── Résistance ────────────────────────────────────────────────────────────────
 
@@ -424,6 +430,10 @@ class BJT(Component):
     def get_nodes(self):
         return [self.node_base, self.node_collector, self.node_emitter]
 
+    @property
+    def is_nonlinear(self):
+        return True
+
     def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
         idx_b = node_map.get(self.node_base, -1)
         idx_c = node_map.get(self.node_collector, -1)
@@ -507,6 +517,10 @@ class Diode(Component):
 
     def get_nodes(self):
         return [self.node_anode, self.node_cathode]
+
+    @property
+    def is_nonlinear(self):
+        return True
 
     def stamp(self, G, b, node_map, branch_map, dt, t, prev_state):
         idx_a = node_map.get(self.node_anode,   -1)

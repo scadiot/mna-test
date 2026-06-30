@@ -351,3 +351,12 @@ def test_potentiometer_params():
     pot = Potentiometer("POT1", "N1", "N2", "N3", 2200.0, ratio=0.3)
     assert pot.params["resistance"] == pytest.approx(2200.0)
     assert pot.params["ratio"] == pytest.approx(0.3)
+
+def test_is_nonlinear_flags():
+    from simulator.components import Resistor, Capacitor, Inductor, BJT, Diode, Switch
+    assert Resistor("R", "A", "B", 1000.0).is_nonlinear is False
+    assert Capacitor("C", "A", "B", 1e-6).is_nonlinear is False
+    assert Inductor("L", "A", "B", 1e-3).is_nonlinear is False
+    assert Switch("S", "A", "B", False).is_nonlinear is False
+    assert BJT("Q", "b", "c", "e").is_nonlinear is True
+    assert Diode("D", "a", "k").is_nonlinear is True
