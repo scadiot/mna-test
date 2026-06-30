@@ -76,7 +76,7 @@ def load_circuit(path: str) -> CircuitModel:
     return model
 
 
-def save_circuit(model: CircuitModel, path: str) -> None:
+def model_to_dict(model: CircuitModel) -> dict:
     nodes = [{"id": n.id, "x": n.x, "y": n.y} for n in model.nodes]
 
     components = []
@@ -92,10 +92,12 @@ def save_circuit(model: CircuitModel, path: str) -> None:
         obj["params"] = c.params
         components.append(obj)
 
-    data = {"name": model.name, "dt": model.dt,
+    return {"name": model.name, "dt": model.dt,
             "nodes": nodes, "components": components}
 
+
+def save_circuit(model: CircuitModel, path: str) -> None:
+    data = model_to_dict(model)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-
     model.mark_clean()
