@@ -134,6 +134,9 @@ class EditorCanvas(tk.Frame):
                 self._selected_comp = None
                 self._selected_node = hit[1]
                 self._selected_wire = None
+            else:
+                self._deselect()
+                return
             self._state = "SELECTED"
             self.redraw()
             self._notify_selection()
