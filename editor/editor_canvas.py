@@ -44,6 +44,7 @@ class EditorCanvas(tk.Frame):
         self._selected_node: str | None = None
         self._selected_wire: tuple[str, str] | None = None  # (comp_id, pin_name)
         self._state = "IDLE"
+        self._read_only = False
         self._drag_start: tuple[float, float] = (0, 0)
         self._connect_source: tuple[str, str] | None = None  # (comp_id, pin_name)
         self._connect_line: int | None = None
@@ -64,6 +65,10 @@ class EditorCanvas(tk.Frame):
         self.canvas.bind("<Delete>", self._on_delete)
         self.canvas.bind("<KeyPress-Delete>", self._on_delete)
         self.canvas.focus_set()
+
+    def set_read_only(self, value: bool):
+        """Active/désactive le mode lecture seule (sélection autorisée, mutations bloquées)."""
+        self._read_only = value
 
     def _item_at(self, x, y):
         """Retourne (kind, ...) pour l'item Tkinter le plus proche : 'comp', 'node', 'pin', 'wire'."""
@@ -116,6 +121,24 @@ class EditorCanvas(tk.Frame):
         hit = self._item_at(event.x, event.y)
         self._drag_start = (event.x, event.y)
 
+        if self._read_only:
+            if hit is None:
+                self._deselect()
+                return
+            kind = hit[0]
+            if kind in ("comp", "pin"):
+                self._selected_comp = hit[1]
+                self._selected_node = None
+                self._selected_wire = None
+            elif kind == "node":
+                self._selected_comp = None
+                self._selected_node = hit[1]
+                self._selected_wire = None
+            self._state = "SELECTED"
+            self.redraw()
+            self._notify_selection()
+            return
+
         if hit is None:
             self._deselect()
             return
@@ -156,6 +179,8 @@ class EditorCanvas(tk.Frame):
             self._notify_selection()
 
     def _on_motion(self, event):
+        if self._read_only:
+            return
         if self._state == "SELECTED":
             dx = abs(event.x - self._drag_start[0])
             dy = abs(event.y - self._drag_start[1])
@@ -218,6 +243,8 @@ class EditorCanvas(tk.Frame):
             self.redraw()
 
     def _on_double_click(self, event):
+        if self._read_only:
+            return
         hit = self._item_at(event.x, event.y)
         if hit is None:
             # Créer un nouveau nœud
@@ -231,6 +258,8 @@ class EditorCanvas(tk.Frame):
             self._notify_model()
 
     def _on_delete(self, event):
+        if self._read_only:
+            return
         if self._selected_comp:
             self.model.remove_component(self._selected_comp)
             self._selected_comp = None
@@ -370,6 +399,8 @@ class EditorCanvas(tk.Frame):
                                      tags=(wire_tag, "wire"))
 
     def drop_component(self, comp_type: str, canvas_x: float, canvas_y: float):
+        if self._read_only:
+            return
         template = COMPONENT_TEMPLATES.get(comp_type)
         if template is None:
             return
