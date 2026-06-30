@@ -88,14 +88,11 @@ def _make_component(data):
         raise ValueError(f"Type de composant inconnu : '{comp_type}'")
 
 
-def load_circuit(path):
+def build_circuit(data):
     """
-    Charge et valide un fichier JSON de circuit.
+    Construit un Circuit depuis un dict déjà désérialisé.
     Lève ValueError si le format est invalide ou si GND est absent.
     """
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
     name = data.get("name", "Sans nom")
     dt = float(data.get("dt", 1e-5))
     components = [_make_component(c) for c in data.get("components", [])]
@@ -114,3 +111,13 @@ def load_circuit(path):
             histories[comp.id] = comp.history_size
 
     return Circuit(name=name, dt=dt, components=components, histories=histories)
+
+
+def load_circuit(path):
+    """
+    Charge et valide un fichier JSON de circuit.
+    Lève ValueError si le format est invalide ou si GND est absent.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return build_circuit(data)
