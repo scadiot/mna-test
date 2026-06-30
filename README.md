@@ -26,12 +26,14 @@ pip install -r requirements.txt
 python main.py
 ```
 
+Lance l'application unifiée (édition + simulation dans une fenêtre unique).
+
 ---
 
 ## Utilisation
 
-1. Cliquer sur **"Ouvrir circuit..."** et choisir un fichier `.json` (dossier `circuits/`)
-2. Cliquer sur **"▶ Démarrer"** pour lancer la simulation
+1. Dessiner ou ouvrir un circuit dans le canvas (mode **EDIT**)
+2. Cliquer sur **"▶ Démarrer"** pour simuler : le schéma se fige et affiche tensions, couleurs et états en live
 3. Cliquer sur un composant dans la liste pour voir ses paramètres et son état en temps réel
 4. Les voltmètres et ampèremètres affichent un graphique d'historique. Une case
    **« Déclenchement »** (cochée par défaut) stabilise la trace des signaux
@@ -41,7 +43,7 @@ python main.py
    à `dt = 1e-5` et 100 Hz (1000 échantillons/période), `history_size = 3000`
    capture ~3 périodes.
 5. Un interrupteur (`switch`) affiche un bouton **Toggle** pour l'ouvrir/fermer pendant la simulation
-6. Cliquer sur **"⏹ Arrêter"** pour stopper
+6. Cliquer sur **"⏹ Arrêter"** pour revenir à l'édition
 
 ---
 
@@ -159,9 +161,17 @@ mna-test/
 │   ├── components.py         ← R, L, C, Switch, BJT, OpAmp, Voltmeter, Ammeter
 │   └── sources.py            ← DC, Sine, Pulse, Square
 ├── ui/
-│   ├── app.py                ← fenêtre principale Tkinter
-│   ├── component_list.py     ← liste des composants cliquable
-│   └── detail_panel.py       ← panneau détail + graphique matplotlib
+│   ├── unified_app.py        ← fenêtre unique édition + simulation
+│   ├── detail_panel.py       ← panneau détail + graphe matplotlib (mode RUN)
+│   └── trigger.py            ← fenêtre de déclenchement oscilloscope
+├── editor/
+│   ├── editor_canvas.py      ← canvas 2D (édition + overlay live)
+│   ├── component_panel.py    ← palette gauche (drag-drop)
+│   ├── properties_panel.py   ← panneau propriétés (mode EDIT)
+│   ├── circuit_model.py      ← modèle du circuit (nœuds, composants, positions)
+│   ├── validation.py         ← validation pré-simulation
+│   ├── overlay.py            ← helpers couleur tension + indicateur d'état
+│   └── io.py                 ← lecture/écriture JSON + model_to_dict
 ├── circuits/
 │   ├── rc_filter.json
 │   ├── rl_transient.json

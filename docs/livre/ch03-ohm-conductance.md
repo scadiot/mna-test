@@ -71,7 +71,7 @@ $$
 
 Autrement dit, **les conductances en parallèle s'additionnent** : `G_total = G₁ + G₂`. (En résistances, la formule serait l'inverse de la somme des inverses — bien plus pénible.)
 
-Ce n'est pas une curiosité théorique : c'est *exactement* ce qui se produit dans la matrice du simulateur. Au chapitre 6, vous avez vu que tamponner une conductance fait `G[i,i] += g`. Si deux composants touchent le même nœud `i`, leurs conductances s'**additionnent** dans la même case grâce au `+=`. La méthode de stamping n'est donc rien d'autre que la traduction mécanique de cette propriété d'addition.
+Ce n'est pas une curiosité théorique : c'est *exactement* ce qui se produit dans la matrice du simulateur. Au chapitre 6, nous verrons que tamponner une conductance revient à faire `G[i,i] += g`. Si deux composants touchent le même nœud `i`, leurs conductances s'**additionnent** dans la même case grâce au `+=`. Cette mécanique d'assemblage n'est donc rien d'autre que la traduction directe de cette propriété d'addition.
 
 ## 3.4 La conductance dans le code
 
@@ -109,9 +109,9 @@ La parade est partout la même dans le code : approcher ces idéaux par des vale
 
 - La **loi d'Ohm** relie tension et courant dans une résistance : `U = R·I`.
 - Le simulateur la **retourne** en `I = G·U`, où `G = 1/R` est la **conductance** (en siemens). Cette forme « courant en fonction de la tension » est celle qui remplit la matrice.
-- **Les conductances en parallèle s'additionnent** (`G_total = G₁ + G₂`) — propriété que le stamping traduit directement par le `+=` dans une même case.
+- **Les conductances en parallèle s'additionnent** (`G_total = G₁ + G₂`) — propriété que l'assemblage de la matrice traduit directement par le `+=` dans une même case.
 - Dans le code, toute résistance est convertie en conductance par `1.0 / R` avant d'être tamponnée. Les états « ouvert » / « fermé » sont modélisés par des résistances **extrêmes mais finies** (`1e9 Ω`, `1e-6 Ω`) pour éviter divisions par zéro et matrices singulières.
 
 **Ceci clôt la Partie I.** Vous disposez maintenant des trois piliers physiques : les **grandeurs** (tension, courant, masse), les **lois** (Kirchhoff), et la **relation** qui les unit (Ohm, vue à travers la conductance).
 
-**Dans la Partie II**, nous allons assembler ces pièces pour construire, pas à pas, le système d'équations `G·x = b` — d'abord en modélisant le circuit comme un graphe (chapitre 4), puis en écrivant les équations à la main (chapitre 5), avant de retrouver, enrichie et démystifiée, la méthode de stamping du chapitre 6.
+**Dans la Partie II**, nous allons assembler ces pièces pour construire, pas à pas, le système d'équations `G·x = b` — d'abord en modélisant le circuit comme un graphe (chapitre 4), puis en écrivant les équations à la main (chapitre 5), avant de découvrir, au chapitre 6, comment le simulateur assemble ce système automatiquement, composant par composant : une technique nommée *stamping*.

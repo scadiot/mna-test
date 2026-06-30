@@ -4,9 +4,13 @@ Application Python/Tkinter pour créer et éditer visuellement les fichiers JSON
 
 ## Lancement
 
+L'éditeur n'a plus de point d'entrée autonome ; il est intégré à l'application principale :
+
 ```bash
-python -m editor.main
+python main.py
 ```
+
+Les modules `editor/` sont les widgets d'édition réutilisés par `ui/unified_app.py`.
 
 ## Interface
 
@@ -98,11 +102,9 @@ Les champs `x`, `y`, `rotation` et la clé `nodes` sont ignorés par le simulate
 
 ```
 editor/
-├── main.py              # Point d'entrée, fenêtre principale
 ├── circuit_model.py     # Dataclasses CircuitModel, ComponentData, NodeData
 ├── editor_canvas.py     # Canvas 2D, COMPONENT_TEMPLATES, machine à états
 ├── component_panel.py   # Panneau gauche avec drag-and-drop
 ├── properties_panel.py  # Panneau droit, édition des propriétés
-├── toolbar.py           # Barre d'outils 4 boutons
 └── io.py                # Lecture/écriture JSON
 ```

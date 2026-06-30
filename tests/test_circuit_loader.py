@@ -114,3 +114,32 @@ def test_load_potentiometer_defaults():
     pot = circuit.components[0]
     assert pot.resistance == pytest.approx(1000.0)
     assert pot.ratio == pytest.approx(0.5)
+
+
+def test_build_circuit_from_dict_without_file():
+    from circuit_loader import build_circuit
+    data = {
+        "name": "En mémoire",
+        "dt": 1e-5,
+        "components": [
+            {"id": "V1", "type": "voltage_source", "node_pos": "N1", "node_neg": "GND",
+             "params": {"waveform": "dc", "amplitude": 5.0}},
+            {"id": "R1", "type": "resistor", "node_a": "N1", "node_b": "GND",
+             "params": {"resistance": 1000.0}},
+        ],
+    }
+    circuit = build_circuit(data)
+    assert isinstance(circuit, Circuit)
+    assert circuit.name == "En mémoire"
+    assert circuit.dt == 1e-5
+    assert len(circuit.components) == 2
+
+
+def test_build_circuit_requires_gnd():
+    from circuit_loader import build_circuit
+    data = {"name": "Sans masse", "dt": 1e-5,
+            "components": [{"id": "R1", "type": "resistor",
+                            "node_a": "N1", "node_b": "N2",
+                            "params": {"resistance": 1000.0}}]}
+    with pytest.raises(ValueError):
+        build_circuit(data)

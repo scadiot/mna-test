@@ -17,6 +17,7 @@ class ComponentPanel(tk.Frame):
         self._canvas_widget = canvas
         self._root = root
         self._drag_type: str | None = None
+        self._enabled = True
         self._ghost: int | None = None
 
         tk.Label(self, text="Composants", font=("TkDefaultFont", 9, "bold")).pack(pady=(4, 2))
@@ -31,7 +32,14 @@ class ComponentPanel(tk.Frame):
 
         self._listbox.bind("<ButtonPress-1>", self._on_list_press)
 
+    def set_enabled(self, value: bool):
+        """Active ou désactive la palette (drag-drop) — désactivée en simulation."""
+        self._enabled = value
+        self._listbox.config(state=tk.NORMAL if value else tk.DISABLED)
+
     def _on_list_press(self, event):
+        if not self._enabled:
+            return
         idx = self._listbox.nearest(event.y)
         if idx < 0 or idx >= len(COMPONENT_TYPES) + 2:
             return

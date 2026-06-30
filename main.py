@@ -1,6 +1,6 @@
-# main.py — Point d'entrée du simulateur de circuit électronique
-from ui.app import App
+# main.py — Point d'entrée de l'application unifiée (édition + simulation)
+from ui.unified_app import UnifiedApp
 
 if __name__ == "__main__":
-    app = App()
+    app = UnifiedApp()
     app.mainloop()

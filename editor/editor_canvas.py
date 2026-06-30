@@ -3,6 +3,7 @@ import copy
 import math
 import tkinter as tk
 from editor.circuit_model import CircuitModel, ComponentData, NodeData, Pin
+from editor.overlay import voltage_color, state_indicator
 
 COMP_SIZE = 100
 PIN_RADIUS = 6
@@ -44,6 +45,7 @@ class EditorCanvas(tk.Frame):
         self._selected_node: str | None = None
         self._selected_wire: tuple[str, str] | None = None  # (comp_id, pin_name)
         self._state = "IDLE"
+        self._read_only = False
         self._drag_start: tuple[float, float] = (0, 0)
         self._connect_source: tuple[str, str] | None = None  # (comp_id, pin_name)
         self._connect_line: int | None = None
@@ -64,6 +66,10 @@ class EditorCanvas(tk.Frame):
         self.canvas.bind("<Delete>", self._on_delete)
         self.canvas.bind("<KeyPress-Delete>", self._on_delete)
         self.canvas.focus_set()
+
+    def set_read_only(self, value: bool):
+        """Active/désactive le mode lecture seule (sélection autorisée, mutations bloquées)."""
+        self._read_only = value
 
     def _item_at(self, x, y):
         """Retourne (kind, ...) pour l'item Tkinter le plus proche : 'comp', 'node', 'pin', 'wire'."""
@@ -116,6 +122,27 @@ class EditorCanvas(tk.Frame):
         hit = self._item_at(event.x, event.y)
         self._drag_start = (event.x, event.y)
 
+        if self._read_only:
+            if hit is None:
+                self._deselect()
+                return
+            kind = hit[0]
+            if kind in ("comp", "pin"):
+                self._selected_comp = hit[1]
+                self._selected_node = None
+                self._selected_wire = None
+            elif kind == "node":
+                self._selected_comp = None
+                self._selected_node = hit[1]
+                self._selected_wire = None
+            else:
+                self._deselect()
+                return
+            self._state = "SELECTED"
+            self.redraw()
+            self._notify_selection()
+            return
+
         if hit is None:
             self._deselect()
             return
@@ -156,6 +183,8 @@ class EditorCanvas(tk.Frame):
             self._notify_selection()
 
     def _on_motion(self, event):
+        if self._read_only:
+            return
         if self._state == "SELECTED":
             dx = abs(event.x - self._drag_start[0])
             dy = abs(event.y - self._drag_start[1])
@@ -218,6 +247,8 @@ class EditorCanvas(tk.Frame):
             self.redraw()
 
     def _on_double_click(self, event):
+        if self._read_only:
+            return
         hit = self._item_at(event.x, event.y)
         if hit is None:
             # Créer un nouveau nœud
@@ -231,6 +262,8 @@ class EditorCanvas(tk.Frame):
             self._notify_model()
 
     def _on_delete(self, event):
+        if self._read_only:
+            return
         if self._selected_comp:
             self.model.remove_component(self._selected_comp)
             self._selected_comp = None
@@ -303,6 +336,48 @@ class EditorCanvas(tk.Frame):
         for comp in self.model.components:
             self._draw_wires(comp)
 
+    def draw_live_overlay(self, node_voltages: dict, comp_states: dict, comp_objects: dict):
+        """Superpose tensions, code couleur des nœuds et indicateurs d'état.
+
+        À appeler après redraw() en mode simulation. node_voltages : {nom: V}.
+        comp_states : {id: {"voltage","current",...}}. comp_objects : {id: composant}.
+        """
+        self.canvas.delete("overlay")
+
+        values = [v for k, v in node_voltages.items() if k != "GND"]
+        vmin = min(values) if values else 0.0
+        vmax = max(values) if values else 0.0
+
+        # Nœuds : remplissage coloré (sauf GND) + étiquette de tension
+        for node in self.model.nodes:
+            v = node_voltages.get(node.id)
+            if v is None:
+                continue
+            if not node.is_gnd:
+                color = voltage_color(v, vmin, vmax)
+                self.canvas.create_oval(
+                    node.x - NODE_RADIUS, node.y - NODE_RADIUS,
+                    node.x + NODE_RADIUS, node.y + NODE_RADIUS,
+                    fill=color, outline="#2255aa", tags=("overlay",))
+            self.canvas.create_text(
+                node.x, node.y + NODE_RADIUS + 9,
+                text=f"{v:+.2f} V", font=("TkDefaultFont", 7, "bold"),
+                fill="#003366", tags=("overlay",))
+
+        # Composants : indicateur d'état (switch / BJT / diode)
+        for comp in self.model.components:
+            obj = comp_objects.get(comp.id)
+            if obj is None:
+                continue
+            indicator = state_indicator(obj, comp_states.get(comp.id, {}))
+            if indicator is None:
+                continue
+            label, color = indicator
+            self.canvas.create_text(
+                comp.x, comp.y + COMP_SIZE // 2 - 6,
+                text=label, font=("TkDefaultFont", 7, "bold"),
+                fill=color, tags=("overlay",))
+
     def _draw_component(self, comp: ComponentData):
         tag = f"comp_{comp.id}"
         half = COMP_SIZE // 2
@@ -370,6 +445,8 @@ class EditorCanvas(tk.Frame):
                                      tags=(wire_tag, "wire"))
 
     def drop_component(self, comp_type: str, canvas_x: float, canvas_y: float):
+        if self._read_only:
+            return
         template = COMPONENT_TEMPLATES.get(comp_type)
         if template is None:
             return

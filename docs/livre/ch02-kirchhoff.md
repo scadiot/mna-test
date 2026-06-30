@@ -41,7 +41,7 @@ Voici le lien central de tout le livre, que je vous demande de mémoriser :
 
 > **Le simulateur écrit une équation « loi des nœuds » pour chaque nœud du circuit. Ces équations, mises ensemble, *sont* la matrice `G`.**
 
-Chaque ligne de la matrice que vous avez rencontrée au chapitre 6 n'est rien d'autre qu'une loi des nœuds en un point. Quand un composant « tamponne » sa contribution, il ne fait qu'ajouter sa part de courant dans les équations KCL des nœuds qu'il touche.
+Chaque ligne de la matrice `G` que construira le simulateur n'est rien d'autre qu'une loi des nœuds en un point. Quand un composant viendra y déposer sa contribution — on dira qu'il la « tamponne » —, il ne fera qu'ajouter sa part de courant dans les équations KCL des nœuds qu'il touche.
 
 C'est pourquoi la masse est exclue de la matrice (chapitre 1) : on n'écrit pas d'équation des nœuds pour elle. Elle absorbe ou fournit librement le courant nécessaire pour que tous les *autres* nœuds soient équilibrés — elle est le « puits » qui referme le bilan.
 

@@ -112,3 +112,42 @@ def test_potentiometer_round_trip(tmp_path):
     assert pot.pin_connections["node_a"] == "N_A"
     assert pot.pin_connections["node_wiper"] == "N_W"
     assert pot.pin_connections["node_b"] == "N_B"
+
+def test_model_to_dict_matches_save_circuit(tmp_path):
+    from editor.io import model_to_dict, save_circuit
+    from editor.circuit_model import CircuitModel, ComponentData, NodeData
+    import json
+
+    model = CircuitModel()
+    model.name = "T"
+    model.add_node(NodeData(id="GND", x=10, y=10, is_gnd=True))
+    model.add_node(NodeData(id="N1", x=20, y=20))
+    model.add_component(ComponentData(
+        id="R1", type="resistor", x=30, y=30, rotation=0,
+        params={"resistance": 1000.0},
+        pin_connections={"node_a": "N1", "node_b": "GND"}))
+
+    path = tmp_path / "c.json"
+    save_circuit(model, str(path))
+    with open(path, encoding="utf-8") as f:
+        written = json.load(f)
+
+    assert model_to_dict(model) == written
+
+
+def test_model_to_dict_feeds_build_circuit():
+    from editor.io import model_to_dict
+    from circuit_loader import build_circuit, Circuit
+    from editor.circuit_model import CircuitModel, ComponentData, NodeData
+
+    model = CircuitModel()
+    model.add_node(NodeData(id="GND", x=0, y=0, is_gnd=True))
+    model.add_node(NodeData(id="N1", x=0, y=0))
+    model.add_component(ComponentData(
+        id="R1", type="resistor", x=0, y=0, rotation=0,
+        params={"resistance": 1000.0},
+        pin_connections={"node_a": "N1", "node_b": "GND"}))
+
+    circuit = build_circuit(model_to_dict(model))
+    assert isinstance(circuit, Circuit)
+    assert len(circuit.components) == 1
