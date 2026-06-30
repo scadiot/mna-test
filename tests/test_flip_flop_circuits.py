@@ -66,9 +66,9 @@ def test_astable_oscille():
     assert min(samples) < 1.0, f"jamais a l'etat bas (min={min(samples):.2f})"
     assert max(samples) > 3.0, f"jamais a l'etat haut (max={max(samples):.2f})"
     assert _transitions(samples) >= 4, "oscillation insuffisante"
-    # Borne anti-pic : les condensateurs collecteur->GND (200 nF chacun) attenent
-    # les transitoires numeriques du modele BJT piecewise-lineaire. La borne -10 V
-    # est largement au-dessus du pic initial sans condensateurs (~-394 V).
+    # Borne anti-pic : la convergence intra-pas (Task 2) borne naturellement les
+    # pics de commutation du modele BJT piecewise-lineaire. Les condensateurs Cc1/Cc2
+    # (originellement 200 uF chacun) ont ete supprimes : le min mesure est >0.2 V.
     assert min(samples) > -10.0, f"pic de commutation trop violent (min={min(samples):.2f})"
 
 
@@ -109,9 +109,10 @@ def test_bistable_power_on_etat_defini():
     converger vers un etat defini (un collecteur bas < 1 V, l'autre haut > 3 V)
     sans jamais produire de tension aberrante (< -1 V).
 
-    La dissymetrie introduite (Cc1 = 47 uF contre Cc2 = 100 nF) favorise Q1
+    La dissymetrie introduite (Cc1 = 5 uF contre Cc2 = 100 nF) favorise Q1
     passant des le premier pas et evite que les deux transistors oscillent vers
-    un etat non physique.
+    un etat non physique. Cc1 a ete reduit de 47 uF a 5 uF (facteur 9.4x) ;
+    Cc2 reste a 100 nF (valeur minimale pour la continuite d'etat du BJT).
     """
     circuit, engine, _ = make_engine("flip_flop_bistable_rs.json")
     all_samples = []
