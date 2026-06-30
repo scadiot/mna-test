@@ -104,6 +104,8 @@ class UnifiedApp(tk.Tk):
             if comp_id and comp_id in self._comp_objects:
                 self._selected_run_id = comp_id
                 self._detail.show_component(self._comp_objects[comp_id])
+            else:
+                self._selected_run_id = None
             return
         if comp_id:
             self._props.show_component(comp_id)
@@ -151,6 +153,7 @@ class UnifiedApp(tk.Tk):
         if self._engine:
             self._engine.stop()
             self._engine = None
+        self._status_label.config(text="")
         self._mode = "EDIT"
         self._comp_objects = {}
         self._selected_run_id = None

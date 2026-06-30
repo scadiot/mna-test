@@ -344,7 +344,7 @@ class EditorCanvas(tk.Frame):
         """
         self.canvas.delete("overlay")
 
-        values = list(node_voltages.values())
+        values = [v for k, v in node_voltages.items() if k != "GND"]
         vmin = min(values) if values else 0.0
         vmax = max(values) if values else 0.0
 

@@ -106,6 +106,5 @@ editor/
 ├── editor_canvas.py     # Canvas 2D, COMPONENT_TEMPLATES, machine à états
 ├── component_panel.py   # Panneau gauche avec drag-and-drop
 ├── properties_panel.py  # Panneau droit, édition des propriétés
-├── toolbar.py           # Barre d'outils 4 boutons
 └── io.py                # Lecture/écriture JSON
 ```
