@@ -10,6 +10,11 @@ from simulator.components import Inductor, Capacitor, Ammeter
 # à 1 / (1 + THROTTLE_RATIO). 1.0 → ~50 % d'un cœur au maximum.
 THROTTLE_RATIO = 1.0
 
+# Convergence intra-pas : on itère stamp/solve jusqu'à ce que les tensions se
+# stabilisent (‖Δx‖∞ < CONVERGENCE_TOL) ou que MAX_ITERATIONS soit atteint.
+MAX_ITERATIONS = 100
+CONVERGENCE_TOL = 1e-9
+
 
 def _compute_sleep(step_duration, now, next_deadline, dt):
     """
@@ -54,6 +59,8 @@ class SimulationEngine:
 
         # État précédent de chaque composant pour les modèles compagnons
         self._prev_states = {c.id: {"voltage": 0.0, "current": 0.0} for c in self._components}
+        # Nombre d'itérations du dernier pas (diagnostic / tests)
+        self._last_iterations = 0
 
     def _build_maps(self):
         """Attribue un indice à chaque nœud non-GND et à chaque branche de tension."""
@@ -74,39 +81,67 @@ class SimulationEngine:
                 branch_idx += 1
 
     def _step(self, t):
-        """Effectue un pas de simulation MNA à l'instant t."""
+        """Effectue un pas de simulation MNA à l'instant t.
+
+        Boucle de point fixe : les composants non-linéaires (is_nonlinear)
+        re-décident leur état d'après la solution courante jusqu'à stabilité
+        des tensions. L'historique temporel des réactifs (C/L) reste figé sur
+        l'état du pas précédent (self._prev_states) pendant toute l'itération.
+        """
         size = len(self._node_map) + len(self._branch_map)
-        G = np.zeros((size, size))
-        b = np.zeros(size)
 
-        # Chaque composant ajoute sa contribution à G et b
-        for comp in self._components:
-            prev = self._prev_states[comp.id]
-            comp.stamp(G, b, self._node_map, self._branch_map, self._dt, t, prev)
+        # États passés à stamp() : figés pour les réactifs, ré-itérés pour les
+        # non-linéaires. Initialisés depuis l'historique du pas précédent.
+        iter_states = {c.id: dict(self._prev_states[c.id]) for c in self._components}
 
-        # Résolution du système linéaire G·x = b
-        try:
-            x = np.linalg.solve(G, b)
-        except np.linalg.LinAlgError as e:
-            self._state.set_error(f"Matrice singulière à t={t:.6f}s : {e}")
-            return False
+        x = None
+        x_prev = None
+        comp_states = {}
+        iterations = 0
+        for k in range(MAX_ITERATIONS):
+            iterations = k + 1
+            G = np.zeros((size, size))
+            b = np.zeros(size)
+            for comp in self._components:
+                comp.stamp(G, b, self._node_map, self._branch_map,
+                           self._dt, t, iter_states[comp.id])
 
-        # Extraction des tensions aux nœuds
+            try:
+                x = np.linalg.solve(G, b)
+            except np.linalg.LinAlgError as e:
+                self._state.set_error(f"Matrice singulière à t={t:.6f}s : {e}")
+                return False
+
+            comp_states = {
+                comp.id: comp.get_state(x, self._node_map, self._branch_map)
+                for comp in self._components
+            }
+
+            if x_prev is not None and np.max(np.abs(x - x_prev)) < CONVERGENCE_TOL:
+                break
+
+            x_prev = x
+            # Seuls les non-linéaires sont ré-injectés ; les réactifs gardent
+            # l'historique figé du pas précédent.
+            for comp in self._components:
+                if comp.is_nonlinear:
+                    iter_states[comp.id] = comp_states[comp.id]
+
+        self._last_iterations = iterations
+
+        # Tensions aux nœuds (depuis la dernière solution)
         node_voltages = {name: float(x[idx]) for name, idx in self._node_map.items()}
         node_voltages["GND"] = 0.0
 
-        # Extraction de l'état de chaque composant
-        comp_states = {}
+        # Historique des appareils de mesure
         history_updates = {}
         for comp in self._components:
-            state = comp.get_state(x, self._node_map, self._branch_map)
-            comp_states[comp.id] = state
             if comp.records_history:
-                # Enregistre la tension pour le voltmètre, le courant pour l'ampèremètre
+                state = comp_states[comp.id]
                 history_updates[comp.id] = state["current"] if isinstance(comp, Ammeter) else state["voltage"]
 
-        # Recalcul du courant pour les composants réactifs
-        # (get_state ne connaît pas prev_state, donc current=0.0 par défaut)
+        # Recalcul du courant des composants réactifs depuis l'historique figé
+        # (self._prev_states n'est réassigné qu'après ce bloc).
         for comp in self._components:
             if isinstance(comp, Inductor):
                 va = float(x[self._node_map[comp.node_a]]) if comp.node_a in self._node_map else 0.0
