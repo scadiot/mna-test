@@ -89,7 +89,7 @@ indice :     0       1       2          3
               (depuis node_map)        (depuis branch_map)
 ```
 
-La matrice `G` est carrée de cette taille (4×4 ici). Sa partie « haut-gauche » concentre les conductances entre nœuds (le stamping du chapitre 6) ; ses dernières lignes/colonnes encodent les branches (chapitre 7). `GND` n'apparaît nulle part — fidèle à son statut de référence muette.
+La matrice `G` est carrée de cette taille (4×4 ici). Sa partie « haut-gauche » concentre les conductances entre nœuds (assemblées composant par composant au chapitre 6) ; ses dernières lignes/colonnes encodent les branches (chapitre 7). `GND` n'apparaît nulle part — fidèle à son statut de référence muette.
 
 ## 4.6 À retenir
 
@@ -99,4 +99,4 @@ La matrice `G` est carrée de cette taille (4×4 ici). Sa partie « haut-gauche 
 - Certains composants ajoutent une inconnue de **courant** : une **branche** (`needs_branch()`, `branch_map`), numérotée *après* les nœuds.
 - Taille de la matrice = nombre de nœuds (hors GND) + nombre de branches.
 
-**Dans le prochain chapitre**, nous allons enfin remplir cette structure : à partir d'un petit circuit, nous écrirons les équations `G·x = b` *à la main*, en appliquant la loi des nœuds du chapitre 2. Vous y reconnaîtrez, en creux, la méthode de stamping déjà rencontrée au chapitre 6.
+**Dans le prochain chapitre**, nous allons enfin remplir cette structure : à partir d'un petit circuit, nous écrirons les équations `G·x = b` *à la main*, en appliquant la loi des nœuds du chapitre 2. Vous y verrez se dessiner, en creux, la mécanique d'assemblage que le chapitre 6 érigera en méthode systématique.

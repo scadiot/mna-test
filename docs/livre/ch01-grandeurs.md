@@ -66,7 +66,7 @@ node_voltages = {name: float(x[idx]) for name, idx in self._node_map.items()}
 node_voltages["GND"] = 0.0        # la masse : toujours 0 V, par définition
 ```
 
-Nous reverrons ce personnage discret dans presque tous les chapitres. Au chapitre 6, vous avez peut-être déjà croisé son indice spécial `-1` dans la fonction de stamping : c'est la même idée — la masse n'a ni ligne ni colonne dans la matrice, car sa tension n'est pas une inconnue.
+Nous reverrons ce personnage discret dans presque tous les chapitres. Au chapitre 6, quand chaque composant viendra déposer sa contribution dans la matrice, la masse se signalera par un indice spécial `-1` : c'est la même idée — elle n'a ni ligne ni colonne dans la matrice, car sa tension n'est pas une inconnue.
 
 ## 1.5 La puissance : quand tension et courant se rencontrent
 

@@ -114,16 +114,16 @@ Voici enfin nos trois objets en pleine lumière :
 - **`x`**, le vecteur des **tensions inconnues**.
 - **`b`**, le vecteur des **courants injectés** : seul `n1` reçoit la source (`3`), `n2` ne reçoit rien (`0`).
 
-## 5.6 La révélation : ce système, c'est le stamping
+## 5.6 La révélation : ce système s'assemble tout seul
 
-Regardez la matrice `G` ci-dessus, puis souvenez-vous du chapitre 6. Sa structure n'est pas le fruit du hasard :
+Regardez la matrice `G` ci-dessus. Sa structure n'est pas le fruit du hasard :
 
 - Le `+2` en haut à gauche = `g₁ + g₃`, **somme** des conductances touchant `n1`.
 - Le `−1` hors diagonale = `−g₁`, l'**opposé** de la conductance reliant `n1` et `n2`.
 
-Ce sont *précisément* les « quatre marques » de la conductance décrites au chapitre 6 : `+g` sur les diagonales, `−g` sur les croisées. La méthode de stamping n'invente rien : elle **assemble automatiquement, composant par composant, exactement le système que nous venons d'écrire à la main.** La seule différence est qu'elle le fait dans n'importe quel ordre et sans jamais « comprendre » le circuit globalement.
+Ce sont *précisément* les « quatre marques » de la conductance : `+g` sur les diagonales, `−g` sur les croisées. La technique que le simulateur emploie — et que le chapitre 6 détaillera sous le nom de *stamping* — n'invente rien : elle **assemble automatiquement, composant par composant, exactement le système que nous venons d'écrire à la main.** La seule différence est qu'elle le fait dans n'importe quel ordre et sans jamais « comprendre » le circuit globalement.
 
-De même, le vecteur `b` correspond au stamping des sources de courant : `_stamp_current(b, idx_a, idx_b, current)` du chapitre 6 dépose `+3` dans la ligne de `n1`. La boucle qui, dans le moteur, demande à chaque composant de se tamponner produit donc *ce* `G` et *ce* `b`, sans qu'aucun humain n'ait écrit la moindre équation.
+De même, le vecteur `b` reçoit la contribution des sources de courant : la fonction `_stamp_current(b, idx_a, idx_b, current)`, que nous verrons au chapitre 6, déposera `+3` dans la ligne de `n1`. La boucle qui, dans le moteur, demande à chaque composant de se tamponner produit donc *ce* `G` et *ce* `b`, sans qu'aucun humain n'ait écrit la moindre équation.
 
 ## 5.7 Résoudre, et vérifier
 
@@ -159,7 +159,7 @@ C'est tout. `numpy` reçoit la matrice `G` et le vecteur `b`, et renvoie le vect
   - la **diagonale** de `G` = somme des conductances touchant le nœud ;
   - le **hors-diagonale** = opposé de la conductance reliant deux nœuds ;
   - `b` = courants injectés (sources de courant).
-- Ce système est **identiquement** celui que produit le stamping du chapitre 6 — assemblé automatiquement plutôt qu'à la main.
+- Ce système est **identiquement** celui que le simulateur assemble automatiquement, composant par composant, plutôt qu'à la main — la technique que formalisera le chapitre 6 (le *stamping*).
 - On résout, puis on **vérifie** par les lois de Kirchhoff. Le moteur, lui, résout via `np.linalg.solve(G, b)`.
 
 **Dans le prochain chapitre (Ch. 7)**, nous affronterons le composant que l'analyse nodale pure ne sait pas traiter : la **source de tension**. Elle nous forcera à agrandir le système avec une inconnue de courant — la **branche** entrevue au chapitre 4 — et donnera enfin son nom complet à notre méthode : la **MNA**.
