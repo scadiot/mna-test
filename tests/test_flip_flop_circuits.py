@@ -112,7 +112,7 @@ def test_bistable_power_on_etat_defini():
     La dissymetrie introduite (Cc1 = 5 uF contre Cc2 = 100 nF) favorise Q1
     passant des le premier pas et evite que les deux transistors oscillent vers
     un etat non physique. Cc1 a ete reduit de 47 uF a 5 uF (facteur 9.4x) ;
-    Cc2 reste a 100 nF (valeur minimale pour la continuite d'etat du BJT).
+    Cc2 reste a 100 nF et amortit le transitoire de commutation du modele BJT piecewise-lineaire.
     """
     circuit, engine, _ = make_engine("flip_flop_bistable_rs.json")
     all_samples = []
