@@ -1,5 +1,5 @@
 {
-  "name": "Bascule astable — multivibrateur a 2 transistors (clignotant ~1.5 Hz)",
+  "name": "Bascule astable — multivibrateur a 2 transistors (clignotant ~1 Hz)",
   "dt": 1e-3,
   "components": [
     { "id": "VCC", "type": "voltage_source", "node_pos": "N_vcc", "node_neg": "GND",

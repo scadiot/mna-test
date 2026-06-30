@@ -1,6 +1,5 @@
 # tests/test_flip_flop_circuits.py
 import os
-import pytest
 from circuit_loader import load_circuit
 from shared_state import SharedState
 from simulator.engine import SimulationEngine
@@ -56,9 +55,22 @@ def _transitions(samples, low=1.0, high=3.0):
 def test_astable_oscille():
     circuit, engine, _ = make_engine("flip_flop_astable.json")
     samples = []
-    run(engine, 4000, callback=lambda i, t: samples.append(vmeter(engine, "VM_C1"))
-        if i > 0 else None)
-    samples.append(vmeter(engine, "VM_C1"))
+
+    def collect(i, t):
+        # Ignore les premiers pas pour eviter le bruit numerique au demarrage
+        if i >= 10:
+            samples.append(vmeter(engine, "VM_C1"))
+
+    run(engine, 4000, callback=collect)
     assert min(samples) < 1.0, f"jamais a l'etat bas (min={min(samples):.2f})"
     assert max(samples) > 3.0, f"jamais a l'etat haut (max={max(samples):.2f})"
     assert _transitions(samples) >= 4, "oscillation insuffisante"
+
+
+def test_transitions_compte_les_basculements():
+    # Sequence purement basse : 0 transition
+    assert _transitions([0, 0, 0]) == 0
+    # Montee puis descente : 2 transitions (bas->haut->bas)
+    assert _transitions([0, 0, 4, 4, 0, 0]) == 2
+    # Sequence dans la zone morte : 0 transition
+    assert _transitions([2, 2, 2]) == 0
