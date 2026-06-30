@@ -68,7 +68,7 @@ def test_astable_oscille():
     assert _transitions(samples) >= 4, "oscillation insuffisante"
     # Borne anti-pic : la convergence intra-pas (Task 2) borne naturellement les
     # pics de commutation du modele BJT piecewise-lineaire. Les condensateurs Cc1/Cc2
-    # (originellement 200 uF chacun) ont ete supprimes : le min mesure est >0.2 V.
+    # (originellement 200 uF chacun) ont ete supprimes, elimant les instabilites numeriques.
     assert min(samples) > -10.0, f"pic de commutation trop violent (min={min(samples):.2f})"
 
 
