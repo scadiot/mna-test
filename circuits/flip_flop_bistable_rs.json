@@ -31,7 +31,7 @@
       "node_collector": "N_c2", "node_emitter": "GND",
       "params": { "beta": 100, "vce_sat": 0.2, "vbe_threshold": 0.6 } },
     { "id": "Cc1", "type": "capacitor", "node_a": "N_c1", "node_b": "GND",
-      "params": { "capacitance": 1e-7 } },
+      "params": { "capacitance": 4.7e-5 } },
     { "id": "Cc2", "type": "capacitor", "node_a": "N_c2", "node_b": "GND",
       "params": { "capacitance": 1e-7 } },
     { "id": "VM_C1", "type": "voltmeter", "node_a": "N_c1", "node_b": "GND",

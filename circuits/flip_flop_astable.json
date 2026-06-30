@@ -1,5 +1,5 @@
 {
-  "name": "Bascule astable — multivibrateur a 2 transistors (clignotant ~1 Hz)",
+  "name": "Bascule astable — multivibrateur a 2 transistors (clignotant ~0.6 Hz)",
   "dt": 1e-3,
   "components": [
     { "id": "VCC", "type": "voltage_source", "node_pos": "N_vcc", "node_neg": "GND",
@@ -22,6 +22,10 @@
     { "id": "Q2", "type": "transistor_bjt", "node_base": "N_b2",
       "node_collector": "N_c2", "node_emitter": "GND",
       "params": { "beta": 100, "vce_sat": 0.2, "vbe_threshold": 0.6 } },
+    { "id": "Cc1", "type": "capacitor", "node_a": "N_c1", "node_b": "GND",
+      "params": { "capacitance": 2e-4 } },
+    { "id": "Cc2", "type": "capacitor", "node_a": "N_c2", "node_b": "GND",
+      "params": { "capacitance": 2e-4 } },
     { "id": "VM_C1", "type": "voltmeter", "node_a": "N_c1", "node_b": "GND",
       "params": { "history_size": 5000 } },
     { "id": "VM_C2", "type": "voltmeter", "node_a": "N_c2", "node_b": "GND",

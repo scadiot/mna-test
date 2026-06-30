@@ -28,7 +28,8 @@ def run(engine, n, callback=None):
 
 
 def vmeter(engine, comp_id):
-    """Dernière tension lue par un voltmètre (lecture de l'état précédent)."""
+    """Dernière tension lue par un voltmètre (dernière valeur calculée,
+    état courant après le dernier _step)."""
     return engine._prev_states[comp_id]["voltage"]
 
 
@@ -65,6 +66,10 @@ def test_astable_oscille():
     assert min(samples) < 1.0, f"jamais a l'etat bas (min={min(samples):.2f})"
     assert max(samples) > 3.0, f"jamais a l'etat haut (max={max(samples):.2f})"
     assert _transitions(samples) >= 4, "oscillation insuffisante"
+    # Borne anti-pic : les condensateurs collecteur->GND (200 nF chacun) attenent
+    # les transitoires numeriques du modele BJT piecewise-lineaire. La borne -10 V
+    # est largement au-dessus du pic initial sans condensateurs (~-394 V).
+    assert min(samples) > -10.0, f"pic de commutation trop violent (min={min(samples):.2f})"
 
 
 def test_transitions_compte_les_basculements():
@@ -97,6 +102,40 @@ def test_bistable_set_reset_memorise():
     run(engine, 200)
     assert vmeter(engine, "VM_C2") < 1.0, "Reset: C2 devrait etre bas"
     assert vmeter(engine, "VM_C1") > 3.0, "Reset: C1 devrait etre haut"
+
+
+def test_bistable_power_on_etat_defini():
+    """Au power-on sans aucune action sur les interrupteurs, le bistable doit
+    converger vers un etat defini (un collecteur bas < 1 V, l'autre haut > 3 V)
+    sans jamais produire de tension aberrante (< -1 V).
+
+    La dissymetrie introduite (Cc1 = 47 uF contre Cc2 = 100 nF) favorise Q1
+    passant des le premier pas et evite que les deux transistors oscillent vers
+    un etat non physique.
+    """
+    circuit, engine, _ = make_engine("flip_flop_bistable_rs.json")
+    all_samples = []
+
+    def collect_both(i, t):
+        all_samples.append(vmeter(engine, "VM_C1"))
+        all_samples.append(vmeter(engine, "VM_C2"))
+
+    run(engine, 600, callback=collect_both)
+
+    assert min(all_samples) > -1.0, (
+        f"tension aberrante detectee au power-on (min={min(all_samples):.2f} V)"
+    )
+
+    c1_final = vmeter(engine, "VM_C1")
+    c2_final = vmeter(engine, "VM_C2")
+    etat_defini = (c1_final < 1.0) != (c2_final < 1.0)
+    assert etat_defini, (
+        f"etat bistable indefini en fin de course : C1={c1_final:.3f} V, C2={c2_final:.3f} V"
+    )
+    assert (c1_final < 1.0 and c2_final > 3.0) or (c2_final < 1.0 and c1_final > 3.0), (
+        f"etat non valide : C1={c1_final:.3f} V, C2={c2_final:.3f} V "
+        f"(attendu : un < 1 V et l'autre > 3 V)"
+    )
 
 
 def test_monostable_impulsion():
