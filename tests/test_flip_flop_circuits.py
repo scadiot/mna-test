@@ -97,3 +97,28 @@ def test_bistable_set_reset_memorise():
     run(engine, 200)
     assert vmeter(engine, "VM_C2") < 1.0, "Reset: C2 devrait etre bas"
     assert vmeter(engine, "VM_C1") > 3.0, "Reset: C1 devrait etre haut"
+
+
+def test_monostable_impulsion():
+    circuit, engine, _ = make_engine("flip_flop_monostable.json")
+    s_trig = component(circuit, "S_trig")
+
+    # Repos : Q2 passant -> C2 bas, Q1 bloque -> C1 haut
+    run(engine, 300)
+    assert vmeter(engine, "VM_C2") < 1.0, "repos: C2 devrait etre bas"
+    assert vmeter(engine, "VM_C1") > 3.0, "repos: C1 devrait etre haut"
+
+    # Declenchement : impulsion breve sur la base de Q1
+    s_trig.closed = True
+    run(engine, 20)
+    s_trig.closed = False
+
+    # Pendant l'impulsion, C2 passe haut (Q2 bloque)
+    samples_c2 = []
+    run(engine, 600, callback=lambda i, t: samples_c2.append(vmeter(engine, "VM_C2")))
+    assert max(samples_c2) > 3.0, "C2 n'est jamais passe haut apres declenchement"
+
+    # Retour au repos apres l'impulsion
+    run(engine, 600)
+    assert vmeter(engine, "VM_C2") < 1.0, "C2 n'est pas revenu au repos (bas)"
+    assert vmeter(engine, "VM_C1") > 3.0, "C1 n'est pas revenu au repos (haut)"
