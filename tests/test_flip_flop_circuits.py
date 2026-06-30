@@ -74,3 +74,26 @@ def test_transitions_compte_les_basculements():
     assert _transitions([0, 0, 4, 4, 0, 0]) == 2
     # Sequence dans la zone morte : 0 transition
     assert _transitions([2, 2, 2]) == 0
+
+
+def test_bistable_set_reset_memorise():
+    circuit, engine, _ = make_engine("flip_flop_bistable_rs.json")
+    s_set = component(circuit, "S_set")
+    s_reset = component(circuit, "S_reset")
+
+    # SET : ferme S_set 200 pas, puis le rouvre
+    s_set.closed = True
+    run(engine, 200)
+    s_set.closed = False
+    run(engine, 200)
+    # Q1 conduit -> collecteur 1 bas, collecteur 2 haut, et l'etat PERSISTE
+    assert vmeter(engine, "VM_C1") < 1.0, "Set: C1 devrait etre bas"
+    assert vmeter(engine, "VM_C2") > 3.0, "Set: C2 devrait etre haut"
+
+    # RESET : ferme S_reset, puis rouvre -> etat inverse memorise
+    s_reset.closed = True
+    run(engine, 200)
+    s_reset.closed = False
+    run(engine, 200)
+    assert vmeter(engine, "VM_C2") < 1.0, "Reset: C2 devrait etre bas"
+    assert vmeter(engine, "VM_C1") > 3.0, "Reset: C1 devrait etre haut"
