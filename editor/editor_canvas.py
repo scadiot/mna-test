@@ -3,6 +3,7 @@ import copy
 import math
 import tkinter as tk
 from editor.circuit_model import CircuitModel, ComponentData, NodeData, Pin
+from editor.overlay import voltage_color, state_indicator
 
 COMP_SIZE = 100
 PIN_RADIUS = 6
@@ -334,6 +335,48 @@ class EditorCanvas(tk.Frame):
             self._draw_node(node)
         for comp in self.model.components:
             self._draw_wires(comp)
+
+    def draw_live_overlay(self, node_voltages: dict, comp_states: dict, comp_objects: dict):
+        """Superpose tensions, code couleur des nœuds et indicateurs d'état.
+
+        À appeler après redraw() en mode simulation. node_voltages : {nom: V}.
+        comp_states : {id: {"voltage","current",...}}. comp_objects : {id: composant}.
+        """
+        self.canvas.delete("overlay")
+
+        values = list(node_voltages.values())
+        vmin = min(values) if values else 0.0
+        vmax = max(values) if values else 0.0
+
+        # Nœuds : remplissage coloré (sauf GND) + étiquette de tension
+        for node in self.model.nodes:
+            v = node_voltages.get(node.id)
+            if v is None:
+                continue
+            if not node.is_gnd:
+                color = voltage_color(v, vmin, vmax)
+                self.canvas.create_oval(
+                    node.x - NODE_RADIUS, node.y - NODE_RADIUS,
+                    node.x + NODE_RADIUS, node.y + NODE_RADIUS,
+                    fill=color, outline="#2255aa", tags=("overlay",))
+            self.canvas.create_text(
+                node.x, node.y + NODE_RADIUS + 9,
+                text=f"{v:+.2f} V", font=("TkDefaultFont", 7, "bold"),
+                fill="#003366", tags=("overlay",))
+
+        # Composants : indicateur d'état (switch / BJT / diode)
+        for comp in self.model.components:
+            obj = comp_objects.get(comp.id)
+            if obj is None:
+                continue
+            indicator = state_indicator(obj, comp_states.get(comp.id, {}))
+            if indicator is None:
+                continue
+            label, color = indicator
+            self.canvas.create_text(
+                comp.x, comp.y + COMP_SIZE // 2 - 6,
+                text=label, font=("TkDefaultFont", 7, "bold"),
+                fill=color, tags=("overlay",))
 
     def _draw_component(self, comp: ComponentData):
         tag = f"comp_{comp.id}"
