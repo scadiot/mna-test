@@ -2,21 +2,7 @@ import tkinter as tk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from ui.trigger import compute_trigger_window
-
-
-def _time_unit(duration):
-    """Choisit une unité de temps lisible pour une durée donnée (en s).
-
-    Renvoie (libellé, facteur) tel que `valeur_en_s * facteur` donne la
-    valeur exprimée dans l'unité retournée.
-    """
-    if duration >= 1.0:
-        return "s", 1.0
-    if duration >= 1e-3:
-        return "ms", 1e3
-    if duration >= 1e-6:
-        return "µs", 1e6
-    return "ns", 1e9
+from ui.plot_utils import time_unit
 
 
 class DetailPanelWidget(tk.Frame):
@@ -168,7 +154,7 @@ class DetailPanelWidget(tk.Frame):
             # chaque échantillon = un pas dt. L'unité est choisie selon la
             # durée totale de la fenêtre affichée.
             if dt:
-                unit, scale = _time_unit(x_max * dt)
+                unit, scale = time_unit(x_max * dt)
                 factor = dt * scale
                 xs = [x * factor for x in xs]
                 x_max = x_max * factor
