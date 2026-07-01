@@ -71,7 +71,8 @@ class UnifiedApp(tk.Tk):
 
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Panneau droit : propriétés (EDIT) ou graphe (RUN) — swap par pack/pack_forget
+        # Panneau droit : propriétés (EDIT), graphe d'un appareil (RUN sélectionné)
+        # ou graphe combiné (RUN sans sélection) — swap par pack/pack_forget
         self._right = tk.Frame(body)
         self._right.pack(side=tk.RIGHT, fill=tk.Y)
         self._props = PropertiesPanel(self._right, self.model, self.canvas)
