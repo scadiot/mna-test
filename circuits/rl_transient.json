@@ -1,41 +1,89 @@
 {
   "name": "Circuit RL — réponse à l'échelon (interrupteur)",
-  "dt": 1e-6,
+  "dt": 1e-06,
+  "nodes": [
+    {
+      "id": "N1",
+      "x": 83.0,
+      "y": 156.0
+    },
+    {
+      "id": "GND",
+      "x": 278.0,
+      "y": 574.0
+    },
+    {
+      "id": "N2",
+      "x": 275.0,
+      "y": 160.0
+    },
+    {
+      "id": "N3",
+      "x": 473.0,
+      "y": 210.0
+    }
+  ],
   "components": [
     {
       "id": "V1",
       "type": "voltage_source",
+      "x": 85.0,
+      "y": 396.0,
+      "rotation": 0,
       "node_pos": "N1",
       "node_neg": "GND",
-      "params": { "waveform": "dc", "amplitude": 12.0 }
+      "params": {
+        "waveform": "dc",
+        "amplitude": 12.0
+      }
     },
     {
       "id": "SW1",
       "type": "switch",
+      "x": 178.0,
+      "y": 159.0,
+      "rotation": 0,
       "node_a": "N1",
       "node_b": "N2",
-      "params": { "closed": false }
+      "params": {
+        "closed": false
+      }
     },
     {
       "id": "R1",
       "type": "resistor",
+      "x": 374.0,
+      "y": 160.0,
+      "rotation": 0,
       "node_a": "N2",
       "node_b": "N3",
-      "params": { "resistance": 100.0 }
+      "params": {
+        "resistance": 100.0
+      }
     },
     {
       "id": "L1",
       "type": "inductor",
+      "x": 279.0,
+      "y": 400.0,
+      "rotation": 90,
       "node_a": "N3",
       "node_b": "GND",
-      "params": { "inductance": 0.01 }
+      "params": {
+        "inductance": 0.01
+      }
     },
     {
       "id": "VM1",
       "type": "voltmeter",
+      "x": 473.0,
+      "y": 403.0,
+      "rotation": 90,
       "node_a": "N3",
       "node_b": "GND",
-      "params": { "history_size": 500 }
+      "params": {
+        "history_size": 500
+      }
     }
   ]
 }

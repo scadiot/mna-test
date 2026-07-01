@@ -1,49 +1,111 @@
 {
   "name": "Transistor NPN en commutation (signal créneau 10 Hz)",
-  "dt": 1e-3,
+  "dt": 0.001,
+  "nodes": [
+    {
+      "id": "N_base_in",
+      "x": 93.0,
+      "y": 120.0
+    },
+    {
+      "id": "GND",
+      "x": 286.0,
+      "y": 460.0
+    },
+    {
+      "id": "N_base",
+      "x": 379.0,
+      "y": 201.0
+    },
+    {
+      "id": "N_vcc",
+      "x": 364.0,
+      "y": 121.0
+    },
+    {
+      "id": "N_collector",
+      "x": 630.0,
+      "y": 180.0
+    }
+  ],
   "components": [
     {
       "id": "V_base",
       "type": "voltage_source",
+      "x": 73.0,
+      "y": 276.0,
+      "rotation": 0,
       "node_pos": "N_base_in",
       "node_neg": "GND",
-      "params": { "waveform": "square", "amplitude": 5.0, "frequency": 10.0 }
+      "params": {
+        "waveform": "square",
+        "amplitude": 5.0,
+        "frequency": 10.0
+      }
     },
     {
       "id": "R_base",
       "type": "resistor",
+      "x": 197.0,
+      "y": 121.0,
+      "rotation": 0,
       "node_a": "N_base_in",
       "node_b": "N_base",
-      "params": { "resistance": 10000.0 }
+      "params": {
+        "resistance": 10000.0
+      }
     },
     {
       "id": "V_cc",
       "type": "voltage_source",
+      "x": 184.0,
+      "y": 273.0,
+      "rotation": 0,
       "node_pos": "N_vcc",
       "node_neg": "GND",
-      "params": { "waveform": "dc", "amplitude": 12.0 }
+      "params": {
+        "waveform": "dc",
+        "amplitude": 12.0
+      }
     },
     {
       "id": "R_collector",
       "type": "resistor",
+      "x": 546.0,
+      "y": 87.0,
+      "rotation": 0,
       "node_a": "N_vcc",
       "node_b": "N_collector",
-      "params": { "resistance": 1000.0 }
+      "params": {
+        "resistance": 1000.0
+      }
     },
     {
       "id": "Q1",
       "type": "transistor_bjt",
+      "x": 478.0,
+      "y": 269.0,
+      "rotation": 0,
       "node_base": "N_base",
       "node_collector": "N_collector",
       "node_emitter": "GND",
-      "params": { "beta": 100, "vce_sat": 0.2, "vbe_threshold": 0.6 }
+      "params": {
+        "beta": 100,
+        "vce_sat": 0.2,
+        "vbe_threshold": 0.6
+      }
     },
     {
       "id": "VM_col",
       "type": "voltmeter",
+      "x": 627.0,
+      "y": 418.0,
+      "rotation": 90,
       "node_a": "N_collector",
       "node_b": "GND",
-      "params": { "history_size": 500 }
+      "params": {
+        "history_size": 500
+      }
     }
   ]
 }
