@@ -52,6 +52,7 @@ class EditorCanvas(tk.Frame):
         self._ghost_rect: int | None = None
         self._on_selection_change = None
         self._on_model_change = None
+        self._on_switch_toggle = None
 
         self.canvas = tk.Canvas(self, bg="white", cursor="crosshair")
         self.canvas.pack(fill=tk.BOTH, expand=True)
@@ -79,6 +80,8 @@ class EditorCanvas(tk.Frame):
         for item in reversed(items):
             tags = self.canvas.gettags(item)
             for tag in tags:
+                if tag.startswith("swtoggle_"):
+                    return ("switch_toggle", tag[len("swtoggle_"):])
                 if tag.startswith("pin_"):
                     # Format: pin_{comp_id}_{pin_name}
                     # comp_id does not contain underscores in practice (R1, SW1, etc.)
@@ -121,6 +124,18 @@ class EditorCanvas(tk.Frame):
         self.canvas.focus_set()
         hit = self._item_at(event.x, event.y)
         self._drag_start = (event.x, event.y)
+
+        if hit and hit[0] == "switch_toggle":
+            comp_id = hit[1]
+            if self._read_only:
+                if self._on_switch_toggle:
+                    self._on_switch_toggle(comp_id)
+            else:
+                self.model.toggle_switch(comp_id)
+                self.redraw()
+                self._notify_model()
+            self._state = "IDLE"
+            return
 
         if self._read_only:
             if hit is None:
@@ -319,6 +334,9 @@ class EditorCanvas(tk.Frame):
     def set_on_model_change(self, cb):
         self._on_model_change = cb
 
+    def set_on_switch_toggle(self, cb):
+        self._on_switch_toggle = cb
+
     def _notify_selection(self):
         if self._on_selection_change:
             self._on_selection_change(self._selected_comp, self._selected_node)
@@ -364,10 +382,14 @@ class EditorCanvas(tk.Frame):
                 text=f"{v:+.2f} V", font=("TkDefaultFont", 7, "bold"),
                 fill="#003366", tags=("overlay",))
 
-        # Composants : indicateur d'état (switch / BJT / diode)
+        # Composants : switch → rectangle cliquable ; autres → indicateur texte
+        from simulator.components import Switch
         for comp in self.model.components:
             obj = comp_objects.get(comp.id)
             if obj is None:
+                continue
+            if isinstance(obj, Switch):
+                self._draw_switch_toggle(comp, obj.closed, overlay=True)
                 continue
             indicator = state_indicator(obj, comp_states.get(comp.id, {}))
             if indicator is None:
@@ -407,6 +429,34 @@ class EditorCanvas(tk.Frame):
                 px + PIN_RADIUS, py + PIN_RADIUS,
                 fill=color, outline="#222222",
                 tags=(pin_tag, "pin", tag))
+
+        if comp.type == "switch" and not self._read_only:
+            self._draw_switch_toggle(comp, bool(comp.params.get("closed", False)),
+                                     overlay=False)
+
+    def _draw_switch_toggle(self, comp: ComponentData, closed: bool, overlay: bool):
+        """Dessine le rectangle cliquable de bascule d'un switch.
+
+        Placé en bas de la boîte, vert « fermé » / rouge « ouvert ».
+        Tag swtoggle_{id} pour la détection au clic ; tag « overlay » en RUN
+        pour être nettoyé/redessiné à chaque rafraîchissement.
+        """
+        half = COMP_SIZE // 2
+        w, h = 44, 18
+        cx, cy = comp.x, comp.y + half - h // 2 - 4
+        x0, y0 = cx - w // 2, cy - h // 2
+        x1, y1 = cx + w // 2, cy + h // 2
+        fill = "#33aa33" if closed else "#cc4444"
+        label = "fermé" if closed else "ouvert"
+        tags = [f"swtoggle_{comp.id}"]
+        if overlay:
+            tags.append("overlay")
+        tags = tuple(tags)
+        self.canvas.create_rectangle(x0, y0, x1, y1, fill=fill,
+                                     outline="#222222", width=1, tags=tags)
+        self.canvas.create_text(cx, cy, text=label,
+                                font=("TkDefaultFont", 7, "bold"),
+                                fill="white", tags=tags)
 
     def _draw_node(self, node: NodeData):
         tag = f"node_{node.id}"
