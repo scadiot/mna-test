@@ -16,11 +16,11 @@ def test_voltage_color_clamps_and_handles_flat_range():
     assert c.startswith("#") and len(c) == 7
 
 
-def test_state_indicator_switch():
+def test_state_indicator_switch_returns_none():
     sw_open = Switch("SW1", "A", "B", closed=False)
     sw_closed = Switch("SW2", "A", "B", closed=True)
-    assert state_indicator(sw_open, {})[0] == "ouvert"
-    assert state_indicator(sw_closed, {})[0] == "fermé"
+    assert state_indicator(sw_open, {}) is None
+    assert state_indicator(sw_closed, {}) is None
 
 
 def test_state_indicator_bjt():

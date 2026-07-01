@@ -1,5 +1,5 @@
 # editor/overlay.py
-from simulator.components import Switch, BJT, Diode
+from simulator.components import BJT, Diode
 
 
 def voltage_color(v: float, vmin: float, vmax: float) -> str:
@@ -17,10 +17,6 @@ def voltage_color(v: float, vmin: float, vmax: float) -> str:
 
 def state_indicator(component, comp_state: dict):
     """(libellé, couleur) pour les composants à état visible, sinon None."""
-    if isinstance(component, Switch):
-        if component.closed:
-            return ("fermé", "#118811")
-        return ("ouvert", "#aa2222")
     if isinstance(component, BJT):
         i_b = comp_state.get("current", 0.0)
         if i_b <= 1e-9:
