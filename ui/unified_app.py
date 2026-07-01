@@ -64,17 +64,27 @@ class UnifiedApp(tk.Tk):
         body = tk.Frame(self)
         body.pack(fill=tk.BOTH, expand=True)
 
-        self.canvas = EditorCanvas(body, self.model)
+        # Séparateur déplaçable entre le canvas et le panneau droit : la poignée
+        # (sash) permet à l'utilisateur d'agrandir/rétrécir le panneau droit.
+        paned = tk.PanedWindow(body, orient=tk.HORIZONTAL,
+                               sashwidth=6, sashrelief=tk.RAISED)
 
+        self.canvas = EditorCanvas(paned, self.model)
+
+        # Palette de composants (gauche) — largeur fixe, hors du séparateur.
         self.comp_panel = ComponentPanel(body, self.canvas, self)
         self.comp_panel.pack(side=tk.LEFT, fill=tk.Y)
 
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        paned.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Panneau droit : propriétés (EDIT), graphe d'un appareil (RUN sélectionné)
-        # ou graphe combiné (RUN sans sélection) — swap par pack/pack_forget
-        self._right = tk.Frame(body)
-        self._right.pack(side=tk.RIGHT, fill=tk.Y)
+        # ou graphe combiné (RUN sans sélection) — swap par pack/pack_forget.
+        # Ajouté comme volet redimensionnable ; le canvas absorbe l'espace
+        # restant lors d'un agrandissement de la fenêtre (stretch="always").
+        self._right = tk.Frame(paned)
+        paned.add(self.canvas, stretch="always", minsize=300)
+        paned.add(self._right, stretch="never", width=380, minsize=250)
+
         self._props = PropertiesPanel(self._right, self.model, self.canvas)
         self._detail = DetailPanelWidget(self._right)
         self._combined = CombinedGraphWidget(self._right)
