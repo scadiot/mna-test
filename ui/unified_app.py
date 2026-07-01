@@ -34,6 +34,7 @@ class UnifiedApp(tk.Tk):
         self._circuit = None
         self._comp_objects = {}        # {id: composant simulateur}
         self._selected_run_id = None
+        self._last_data = None
 
         self._build_ui()
         self._schedule_refresh()
@@ -92,6 +93,7 @@ class UnifiedApp(tk.Tk):
 
         self.canvas.set_on_selection_change(self._on_selection)
         self.canvas.set_on_model_change(self._on_model_change)
+        self.canvas.set_on_switch_toggle(self._on_switch_toggle)
 
     def _show_props_panel(self):
         self._detail.pack_forget()
@@ -135,6 +137,21 @@ class UnifiedApp(tk.Tk):
             self._props.show_node(node_id)
         else:
             self._props.show_empty()
+
+    def _on_switch_toggle(self, comp_id):
+        """Bascule live d'un switch en RUN, avec redessin immédiat de l'overlay."""
+        if self._mode != "RUN":
+            return
+        obj = self._comp_objects.get(comp_id)
+        if obj is None or not hasattr(obj, "toggle"):
+            return
+        obj.toggle()
+        if self._last_data:
+            self.canvas.redraw()
+            self.canvas.draw_live_overlay(
+                self._last_data["node_voltages"],
+                self._last_data["comp_states"],
+                self._comp_objects)
 
     # ── Machine à états EDIT ↔ RUN ───────────────────────────────────────────
     def _toggle_simulation(self):
@@ -197,6 +214,7 @@ class UnifiedApp(tk.Tk):
         if self._mode != "RUN":
             return
         data = self._state.read()
+        self._last_data = data
         if data["error"]:
             self._status_label.config(text=f"Erreur : {data['error']}")
             self._stop_to_edit()
