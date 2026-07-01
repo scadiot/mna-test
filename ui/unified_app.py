@@ -12,6 +12,7 @@ from editor.properties_panel import PropertiesPanel
 from editor.validation import validate_for_simulation
 from editor import io
 from ui.detail_panel import DetailPanelWidget
+from ui.combined_panel import CombinedGraphWidget
 
 
 class UnifiedApp(tk.Tk):
@@ -75,6 +76,7 @@ class UnifiedApp(tk.Tk):
         self._right.pack(side=tk.RIGHT, fill=tk.Y)
         self._props = PropertiesPanel(self._right, self.model, self.canvas)
         self._detail = DetailPanelWidget(self._right)
+        self._combined = CombinedGraphWidget(self._right)
         self._props.pack(fill=tk.BOTH, expand=True)
 
         self.canvas.set_on_selection_change(self._on_selection)
@@ -82,11 +84,18 @@ class UnifiedApp(tk.Tk):
 
     def _show_props_panel(self):
         self._detail.pack_forget()
+        self._combined.pack_forget()
         self._props.pack(fill=tk.BOTH, expand=True)
 
     def _show_detail_panel(self):
         self._props.pack_forget()
+        self._combined.pack_forget()
         self._detail.pack(fill=tk.BOTH, expand=True)
+
+    def _show_combined_panel(self):
+        self._props.pack_forget()
+        self._detail.pack_forget()
+        self._combined.pack(fill=tk.BOTH, expand=True)
 
     # ── Titre ────────────────────────────────────────────────────────────────
     def _update_title(self):
@@ -104,8 +113,10 @@ class UnifiedApp(tk.Tk):
             if comp_id and comp_id in self._comp_objects:
                 self._selected_run_id = comp_id
                 self._detail.show_component(self._comp_objects[comp_id])
+                self._show_detail_panel()
             else:
                 self._selected_run_id = None
+                self._show_combined_panel()
             return
         if comp_id:
             self._props.show_component(comp_id)
@@ -144,7 +155,8 @@ class UnifiedApp(tk.Tk):
         self._selected_run_id = None
         self.canvas.set_read_only(True)
         self.comp_panel.set_enabled(False)
-        self._show_detail_panel()
+        self._combined.set_meters(self._comp_objects)
+        self._show_combined_panel()
         self._run_btn.config(text="⏹  Arrêter")
         self._status_label.config(text="")
         self._update_title()
@@ -185,6 +197,9 @@ class UnifiedApp(tk.Tk):
             cs = data["comp_states"].get(self._selected_run_id, {})
             history = data["histories"].get(self._selected_run_id, [])
             self._detail.update(cs, history, self._circuit.dt)
+        else:
+            self._combined.update(
+                data["histories"], self._comp_objects, self._circuit.dt)
 
     # ── Opérations fichier (mode EDIT) ───────────────────────────────────────
     def _confirm_unsaved(self) -> bool:
