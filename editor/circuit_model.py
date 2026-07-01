@@ -81,6 +81,19 @@ class CircuitModel:
             del comp.pin_connections[pin_name]
             self._touch()
 
+    def toggle_switch(self, comp_id: str) -> bool:
+        """Inverse l'état closed d'un switch. Renvoie le nouvel état.
+
+        No-op renvoyant False si le composant est absent ou n'a pas de
+        paramètre 'closed'.
+        """
+        comp = self.get_component(comp_id)
+        if comp is None or "closed" not in comp.params:
+            return False
+        comp.params["closed"] = not comp.params["closed"]
+        self._touch()
+        return comp.params["closed"]
+
     def next_id(self, comp_type: str) -> str:
         prefix = TYPE_PREFIX.get(comp_type, comp_type[0].upper())
         used = {c.id for c in self.components}

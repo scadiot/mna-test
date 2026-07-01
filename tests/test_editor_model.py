@@ -92,3 +92,23 @@ def test_is_dirty():
 def test_next_id_potentiometer():
     m = CircuitModel()
     assert m.next_id("potentiometer") == "POT1"
+
+def make_switch(id="SW1", closed=False):
+    return ComponentData(id=id, type="switch", x=100.0, y=100.0, rotation=0,
+                         params={"closed": closed}, pin_connections={})
+
+def test_toggle_switch_inverts_and_marks_dirty():
+    m = CircuitModel()
+    m.add_component(make_switch(closed=False))
+    m.mark_clean()
+    assert m.toggle_switch("SW1") is True
+    assert m.get_component("SW1").params["closed"] is True
+    assert m.is_dirty is True
+    assert m.toggle_switch("SW1") is False
+    assert m.get_component("SW1").params["closed"] is False
+
+def test_toggle_switch_missing_or_no_closed_is_noop():
+    m = CircuitModel()
+    m.add_component(make_resistor())
+    assert m.toggle_switch("R1") is False       # pas de clé "closed"
+    assert m.toggle_switch("UNKNOWN") is False   # composant absent
